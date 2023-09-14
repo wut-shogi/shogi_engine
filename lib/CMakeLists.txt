@@ -1,4 +1,4 @@
-add_library(shogi_engine STATIC SHARED
+add_library(shogi_engine
     engine.cpp
     kernels.cu
 )
