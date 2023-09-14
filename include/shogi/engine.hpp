@@ -1,7 +1,5 @@
-namespace shogi
-{
-    namespace engine
-    {
-        void test();
-    }
+namespace shogi {
+namespace engine {
+void test();
 }
+}  // namespace shogi

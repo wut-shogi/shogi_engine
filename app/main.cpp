@@ -1,10 +1,9 @@
 #include <iostream>
 #include <shogi/engine.hpp>
 
-int main(int argc, char *argv[])
-{
-    std::cout << "Hello world!\n";
-    shogi::engine::test();
+int main(int argc, char* argv[]) {
+  std::cout << "Hello world!\n";
+  shogi::engine::test();
 
-    return 0;
+  return 0;
 }
