@@ -4,10 +4,13 @@ project(
     shogi_engine
     VERSION 0.1
     DESCRIPTION "TODO"
-    LANGUAGES CXX)
+    LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED On)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 add_subdirectory(lib)
 add_subdirectory(app)
