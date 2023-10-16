@@ -5,3 +5,6 @@ out
 # IDE files
 .vscode
 .vs
+
+# git submodules
+external
