@@ -10,7 +10,7 @@ struct Board {
   }
 
   Bitboard& operator[](BitboardType idx) {
-    assert(idx >= BitboardType::BEGIN && idx < Bitboardtype::SIZE);
+    assert(idx >= BitboardType::BEGIN && idx < BitboardType::SIZE);
 
     return bbs[idx];
   }
@@ -21,10 +21,6 @@ struct Board {
   }
 };
 
-void InitializeWithStartingPosition(Board& board) {
-  board = Boards::startingBoard;
-}
-
 namespace Boards {
-static Board startingBoard;
+Board STARTING_BOARD();
 }

@@ -16,7 +16,7 @@ set(sourceFiles
     engine.cpp
 )
 
-add_library(shogi_engine
+add_library(shogi_engine STATIC
     ${cudaFiles} ${headerFiles} ${sourceFiles}
 )
 
