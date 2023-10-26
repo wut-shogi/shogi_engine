@@ -1,5 +1,6 @@
 add_library(shogi_engine
-    engine.cpp
+    instance.cpp
+    interface.cpp
     kernels.cu
 )
 
