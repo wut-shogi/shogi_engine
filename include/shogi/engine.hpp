@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../lib/instance.hpp"
 #include "../lib/interface.hpp"
 

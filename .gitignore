@@ -1,7 +1,7 @@
 # build directories
-build
-out
+build/
+out/
 
 # IDE files
-.vscode
-.vs
+.vscode/
+.vs/
