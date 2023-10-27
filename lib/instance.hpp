@@ -1,4 +1,5 @@
 #pragma once
+
 #include "result/readyok.hpp"
 
 namespace shogi {

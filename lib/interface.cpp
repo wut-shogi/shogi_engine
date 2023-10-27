@@ -4,6 +4,7 @@
 namespace shogi {
 namespace engine {
 void interface::accept_command(const std::string& command) {
+  
   return;
 }
 

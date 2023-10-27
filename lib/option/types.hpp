@@ -10,9 +10,6 @@ class base_option {
  private:
   TValue _value = DEFAULT;
 
- protected:
-    static constexpr name std::string_view;
-
  public:
   void set(TValue value) { this->_value = value; };
 

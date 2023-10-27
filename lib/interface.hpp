@@ -12,7 +12,8 @@ namespace engine {
 using ResultPtr = std::unique_ptr<result::result_base>;
 
 /// @brief Interface to engine instance. Used to communicate with engine
-/// according to Universal Shogi Interface.
+/// according to Universal Shogi Interface. Monitores engine state and delegates
+/// necessary calculations to the engine instance.
 class interface {
  private:
   instance _instance;
