@@ -38,7 +38,7 @@ class interface {
 
   /// @brief Immediate return.
   /// @return Optional of first calculated result or nothing, if there is no
-  /// calculated results;
+  /// calculated results
   std::optional<ResultPtr> try_get_result();
 
   /// @brief Blocking return.
