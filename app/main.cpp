@@ -6,7 +6,7 @@ int main(int argc, char* argv[]) {
   shogi::engine::interface interface {
     shogi::engine::instance {}
   };
-  interface.accept_command("test");
+  interface.accept_input("test");
   std::cout << *(interface.await_result()) << std::endl;
   return 0;
 }

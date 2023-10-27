@@ -4,12 +4,12 @@
 #include <optional>
 #include <string>
 #include "instance.hpp"
+#include "parser.hpp"
+#include "command/invoker.hpp"
 #include "result/result_base.hpp"
 
 namespace shogi {
 namespace engine {
-
-using ResultPtr = std::unique_ptr<result::result_base>;
 
 /// @brief Interface to engine instance. Used to communicate with engine
 /// according to Universal Shogi Interface. Monitores engine state and delegates
@@ -17,6 +17,8 @@ using ResultPtr = std::unique_ptr<result::result_base>;
 class interface {
  private:
   instance _instance;
+  parser _parser;
+  command::invoker _invoker;
 
  public:
   interface(instance&& instance) : _instance{instance} {}
@@ -25,8 +27,8 @@ class interface {
   interface(interface&) = delete;
   interface& operator=(interface) = delete;
 
-  /// @brief Accepts commands according to Universal Shogi Interface.
-  /// @param command Command string. It should be a single ASCII line,
+  /// @brief Accepts input commands according to Universal Shogi Interface.
+  /// @param input Command string. It should be a single ASCII line,
   /// f.e. passed from stdin.
   /// @note
   /// - It returns without actually performing requested actions (USI 5.1)
@@ -35,16 +37,16 @@ class interface {
   /// independently (USI 5.1)
   /// @note
   /// - Invalid input in given context is also ignored (USI 5.1)
-  void accept_command(const std::string& command);
+  void accept_input(const std::string& input);
 
   /// @brief Immediate return.
   /// @return Optional of first calculated result or nothing, if there is no
   /// calculated results
-  std::optional<ResultPtr> try_get_result();
+  std::optional<result::ResultPtr> try_get_result();
 
   /// @brief Blocking return.
   /// @return Result pointer of first calculated result.
-  ResultPtr await_result();
+  result::ResultPtr await_result();
 };
 }  // namespace engine
 }  // namespace shogi
