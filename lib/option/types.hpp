@@ -13,7 +13,7 @@ class base_option {
  public:
   void set(TValue value) { this->_value = value; };
 
-  const TValue& get() const {return this->_value};
+  const TValue& get() const { return this->_value; };
 };
 
 /// @brief A checkbox that can either be true or false. (USI 5.3)
