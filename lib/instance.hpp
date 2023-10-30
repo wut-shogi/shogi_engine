@@ -8,8 +8,6 @@ namespace engine {
 /// requests through calls to its methods.
 class instance {
  public:
-  enum debug_enabled { ON, OFF };
-  void debug(debug_enabled enabled);
 
   result::readyok isready();
 
