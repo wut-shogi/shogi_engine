@@ -5,7 +5,6 @@
 #include <string>
 #include "instance.hpp"
 #include "parser.hpp"
-#include "command/invoker.hpp"
 #include "result/result_base.hpp"
 
 namespace shogi {
@@ -18,7 +17,6 @@ class interface {
  private:
   instance _instance;
   parser _parser;
-  command::invoker _invoker;
 
  public:
   interface(instance&& instance) : _instance{instance} {}

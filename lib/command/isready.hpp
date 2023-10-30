@@ -19,9 +19,9 @@ namespace command {
 /// (USI 5.3)
 class isready : public command_base {
  public:
-  virtual void execute(invoker& invoker) override {
+  virtual void execute(instance& instance) override {
     result::ResultPtr result = std::make_unique<result::readyok>();
-    // invoker.post_result(std::move(result));
+    // instance.post_result(std::move(result));
   };
 };
 }  // namespace command

@@ -18,8 +18,8 @@ class debug : public command_base {
 
   debug(debug_enabled enabled) : _enabled{enabled} {}
 
-  virtual void execute(invoker& invoker) override{
-      // invoker.post_result(std::move(result));
+  virtual void execute(instance& instance) override{
+      // instance.post_result(std::move(result));
   };
 
  private:

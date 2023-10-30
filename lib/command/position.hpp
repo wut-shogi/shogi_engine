@@ -15,7 +15,7 @@ namespace command {
 /// to the engine, the GUI should have sent a usinewgame inbetween. (USI 5.3)
 class isready : public command_base {
  public:
-  virtual void execute(invoker& invoker) override;
+  virtual void execute(instance& instance) override;
 };
 }  // namespace command
 }  // namespace engine

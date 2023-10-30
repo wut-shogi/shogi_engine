@@ -16,8 +16,8 @@ namespace command {
 /// period, the engine task will be killed by the GUI. (USI 5.3)
 class usi : public command_base {
  public:
-  virtual void execute(invoker& invoker) override{
-      // invoker.post_result(std::move(result));
+  virtual void execute(instance& instance) override{
+      // instance.post_result(std::move(result));
   };
 };
 }  // namespace command

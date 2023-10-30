@@ -10,8 +10,8 @@ namespace command {
 /// @brief Quit the program as soon as possible. (USI 5.3)
 class quit : public command_base {
  public:
-  virtual void execute(invoker& invoker) override{
-      // invoker.post_result(std::move(result));
+  virtual void execute(instance& instance) override{
+      // instance.post_result(std::move(result));
   };
 };
 }  // namespace command
