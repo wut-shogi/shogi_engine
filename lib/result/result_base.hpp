@@ -2,11 +2,12 @@
 
 #include <iostream>
 #include <string>
+#include <memory>
 
 namespace shogi {
 namespace engine {
 namespace result {
-  
+
 class result_base;
 
 using ResultPtr = std::unique_ptr<result_base>;

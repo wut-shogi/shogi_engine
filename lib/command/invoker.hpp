@@ -2,7 +2,7 @@
 
 #include <memory>
 #include "command_base.hpp"
-#include "result_base.hpp"
+#include "../result/result_base.hpp"
 
 namespace shogi {
 namespace engine {

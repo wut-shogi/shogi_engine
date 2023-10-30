@@ -1,9 +1,13 @@
 #pragma once
-#include "invoker.hpp"
+
+#include <memory>
 
 namespace shogi {
 namespace engine {
+class invoker;
+
 namespace command {
+
 class command_base;
 
 using CommandPtr = std::unique_ptr<command_base>;
