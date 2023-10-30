@@ -1,10 +1,15 @@
 #pragma once
 
-#include "command_base.hpp"
+#include "../instance.hpp"
 #include "../result/result_base.hpp"
+#include "../result/usiok.hpp"
+#include "command_base.hpp"
 
 namespace shogi {
 namespace engine {
+
+class instance;
+
 namespace command {
 
 /// @brief Tell engine to use the USI (universal shogi interface). This will be
@@ -17,7 +22,8 @@ namespace command {
 class usi : public command_base {
  public:
   virtual void execute(instance& instance) override{
-      // instance.post_result(std::move(result));
+      // command_base::result_queue(instance).push_back(
+      //    std::make_unique<result::usiok>());
   };
 };
 }  // namespace command

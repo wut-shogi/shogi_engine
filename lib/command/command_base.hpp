@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include "../result/result_base.hpp"
+#include "../utils/thread_safe_queue.hpp"
 
 namespace shogi {
 namespace engine {
@@ -17,6 +19,7 @@ class command_base {
  public:
   virtual void execute(instance& instance) = 0;
 };
+
 }  // namespace command
 }  // namespace engine
 }  // namespace shogi

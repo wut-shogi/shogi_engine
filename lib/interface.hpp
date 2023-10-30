@@ -19,7 +19,7 @@ class interface {
   parser _parser;
 
  public:
-  interface(instance&& instance) : _instance{instance} {}
+  interface(instance&& instance) : _instance{std::move(instance)} {}
 
   interface() = delete;
   interface(interface&) = delete;
