@@ -1,22 +1,18 @@
 #pragma once
-#include "result_base.hpp"
 #include <sstream>
+#include "result_base.hpp"
 
-namespace shogi {
-namespace engine {
-namespace result {
-class id : public result_base {
+namespace shogi::engine::result {
+class Id : public ResultBase {
  private:
-  static constexpr std::string_view _name = "wut shogi";
-  static constexpr std::string_view _author = "us";
+  static constexpr std::string_view name = "wut shogi";
+  static constexpr std::string_view author = "us";
 
  public:
-  virtual std::string to_string() const override {
+  std::string toString() const override {
     std::ostringstream out;
-    out << "id name " << _name << "\n id author " << _author << "\n";
+    out << "id name " << name << "\n id author " << author << "\n";
     return out.str();
   }
 };
-}  // namespace result
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine::result

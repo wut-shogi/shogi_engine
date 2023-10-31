@@ -5,10 +5,9 @@
 #include "../result/usiok.hpp"
 #include "command_base.hpp"
 
-namespace shogi {
-namespace engine {
+namespace shogi::engine {
 
-class instance;
+class Instance;
 
 namespace command {
 
@@ -19,13 +18,9 @@ namespace command {
 /// engine settings the engine supports. After that, the engine should send
 /// usiok to acknowledge the USI mode. If no usiok is sent within a certain time
 /// period, the engine task will be killed by the GUI. (USI 5.3)
-class usi : public command_base {
+class Usi : public CommandBase {
  public:
-  virtual void execute(instance& instance) override{
-      // command_base::result_queue(instance).push_back(
-      //    std::make_unique<result::usiok>());
-  };
+  void execute(Instance& instance) override {}
 };
 }  // namespace command
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine

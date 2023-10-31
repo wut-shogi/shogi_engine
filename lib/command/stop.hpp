@@ -3,18 +3,12 @@
 #include "command_base.hpp"
 #include "result_base.hpp"
 
-namespace shogi {
-namespace engine {
-namespace command {
+namespace shogi::engine::command {
 
 /// @brief Stop calculating as soon as possible. Don't forget the bestmove and
 /// possibly the ponder token when finishing the search. (USI 5.3)
-class stop : public command_base {
+class Stop : public CommandBase {
  public:
-  virtual void execute(instance& instance) override{
-      // instance.post_result(std::move(result));
-  };
+  void execute(Instance& instance) override {}
 };
-}  // namespace command
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine::command

@@ -2,11 +2,9 @@
 
 #include <string>
 
-namespace shogi {
-namespace engine {
-namespace option {
+namespace shogi::engine::option {
 template <typename TValue, TValue DEFAULT>
-class base_option {
+class BaseOption {
  private:
   TValue _value = DEFAULT;
 
@@ -19,7 +17,7 @@ class base_option {
 /// @brief A checkbox that can either be true or false. (USI 5.3)
 /// @tparam DEFAULT default value
 template <bool DEFAULT>
-class check : public base_option<bool, DEFAULT> {};
+class Check : public BaseOption<bool, DEFAULT> {};
 
 /// @brief A spin wheel or slider that can be an integer in a certain range.
 /// (USI 5.3)
@@ -27,7 +25,5 @@ class check : public base_option<bool, DEFAULT> {};
 /// @tparam MINIMUM minimum value
 /// @tparam MAXIMUM maximum value
 template <int DEFAULT, int MINIMUM, int MAXIMUM>
-class spin : public base_option<int, DEFAULT> {};
-}  // namespace option
-}  // namespace engine
-}  // namespace shogi
+class Spin : public BaseOption<int, DEFAULT> {};
+}  // namespace shogi::engine::option

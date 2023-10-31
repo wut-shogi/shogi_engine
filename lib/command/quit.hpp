@@ -3,17 +3,11 @@
 #include "command_base.hpp"
 #include "result_base.hpp"
 
-namespace shogi {
-namespace engine {
-namespace command {
+namespace shogi::engine::command {
 
 /// @brief Quit the program as soon as possible. (USI 5.3)
-class quit : public command_base {
+class Quit : public CommandBase {
  public:
-  virtual void execute(instance& instance) override{
-      // instance.post_result(std::move(result));
-  };
+  void execute(Instance& instance) override {}
 };
-}  // namespace command
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine::command

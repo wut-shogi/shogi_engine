@@ -4,9 +4,7 @@
 #include "readyok.hpp"
 #include "result_base.hpp"
 
-namespace shogi {
-namespace engine {
-namespace command {
+namespace shogi::engine::command {
 
 /// @brief This is used to synchronize the engine with the GUI. When the GUI has
 /// sent a command or multiple commands that can take some time to complete,
@@ -17,13 +15,8 @@ namespace command {
 /// can be sent also when the engine is calculating in which case the engine
 /// should also immediately answer with readyok without stopping the search.
 /// (USI 5.3)
-class isready : public command_base {
+class IsReady : public CommandBase {
  public:
-  virtual void execute(instance& instance) override {
-    result::ResultPtr result = std::make_unique<result::readyok>();
-    // instance.post_result(std::move(result));
-  };
+  void execute(Instance& instance) override {}
 };
-}  // namespace command
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine::command

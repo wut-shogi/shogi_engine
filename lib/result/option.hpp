@@ -2,9 +2,7 @@
 #include <sstream>
 #include "result_base.hpp"
 
-namespace shogi {
-namespace engine {
-namespace result {
+namespace shogi::engine::result {
 /// @brief  This command tells the GUI which parameters can be changed in the
 /// engine. This should be sent once at engine startup after the usi and the id
 /// commands if any parameter can be changed in the engine. The GUI should parse
@@ -21,10 +19,8 @@ namespace result {
 /// this tokens don't make sense.
 ///
 /// One string will be sent for each parameter. (USI 5.3)
-class option : public result_base {
+class Option : public ResultBase {
  public:
-  virtual std::string to_string() const override;
+  std::string toString() const override;
 };
-}  // namespace result
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine::result

@@ -2,13 +2,10 @@
 
 #include "result_base.hpp"
 
-namespace shogi {
-namespace engine {
-namespace result {
+namespace shogi::engine::result {
 
-class readyok : public result_base {
-  virtual std::string to_string() const override { return "readyok\n"; }
+class ReadyOk : public ResultBase {
+ public:
+  std::string toString() const override { return "readyok\n"; }
 };
-}  // namespace result
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine::result

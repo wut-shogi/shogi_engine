@@ -1,9 +1,5 @@
-namespace shogi {
-namespace engine {
-namespace kernels {
+namespace shogi::engine::kernels {
 
-__global__ void kernelExample();
+__global__ void KernelExample();
 
-}  // namespace kernels
-}  // namespace engine
 }  // namespace shogi

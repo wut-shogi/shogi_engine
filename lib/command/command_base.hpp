@@ -4,23 +4,26 @@
 #include "../result/result_base.hpp"
 #include "../utils/thread_safe_queue.hpp"
 
-namespace shogi {
-namespace engine {
+namespace shogi::engine {
 
-class instance;
+class Instance;
 
 namespace command {
 
-class command_base;
+class CommandBase;
 
-using CommandPtr = std::unique_ptr<command_base>;
+using CommandPtr = std::unique_ptr<CommandBase>;
 
-class command_base {
+class CommandBase {
  public:
-  virtual void execute(instance& instance) = 0;
-  virtual ~command_base() = default;
+  virtual void execute(Instance& instance) = 0;
+  virtual ~CommandBase() = default;
+  CommandBase() = default;
+  CommandBase(CommandBase&) = default;
+  CommandBase(CommandBase&&) = default;
+  CommandBase& operator=(const CommandBase&) = default;
+  CommandBase& operator=(CommandBase&&) = default;
 };
 
 }  // namespace command
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine

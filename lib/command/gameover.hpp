@@ -3,18 +3,12 @@
 #include "command_base.hpp"
 #include "result_base.hpp"
 
-namespace shogi {
-namespace engine {
-namespace command {
+namespace shogi::engine::command {
 
 /// @brief (Shogidogoro) Informs the engine that the game has ended with the
 /// specified result, from the engine's own point or view. (USI 5.3)
-class gameover : public command_base {
+class GameOver : public CommandBase {
  public:
-  virtual void execute(instance& instance) override{
-      // instance.post_result(std::move(result));
-  };
+  void execute(Instance& instance) override {}
 };
-}  // namespace command
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine::command

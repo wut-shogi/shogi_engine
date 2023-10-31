@@ -2,18 +2,16 @@
 #include <thread>
 #include "result/usiok.hpp"
 
-namespace shogi {
-namespace engine {
+namespace shogi::engine {
 
-void instance::post_command(command::CommandPtr command) {
-  std::thread t{[command = std::move(command), &instance = *this]() {
+void Instance::postCommand(command::CommandPtr command) {
+  std::thread thread{[command = std::move(command), &instance = *this]() {
     command->execute(instance);
   }};
-  t.detach();
+  thread.detach();
 }
 
-result::ResultPtr instance::get_result() {
-  return std::make_unique<result::usiok>();
+result::ResultPtr Instance::getResult() {
+  return std::make_unique<result::UsiOk>();
 }
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine

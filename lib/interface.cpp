@@ -1,26 +1,22 @@
 #include "interface.hpp"
 #include "result/usiok.hpp"
 
-namespace shogi {
-namespace engine {
+namespace shogi::engine {
 
-void interface::accept_input(const std::string& input) {
+void Interface::acceptInput(const std::string& input) {
   std::optional<command::CommandPtr> command = _parser.parse(input);
-  
+
   if (command.has_value()) {
     //_instance.post_command(std::move(command.value()));
   }
-
-  return;
 }
 
-std::optional<result::ResultPtr> interface::try_get_result() {
+std::optional<result::ResultPtr> Interface::tryGetResult() {
   return std::nullopt;
 }
 
-result::ResultPtr interface::await_result() {
-  return std::make_unique<result::usiok>();
+result::ResultPtr Interface::awaitResult() {
+  return std::make_unique<result::UsiOk>();
 }
 
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine

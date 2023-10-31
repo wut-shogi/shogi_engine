@@ -3,20 +3,14 @@
 #include "command_base.hpp"
 #include "result_base.hpp"
 
-namespace shogi {
-namespace engine {
-namespace command {
+namespace shogi::engine::command {
 
 /// @brief The user has played the expected move. This will be sent if the
 /// engine was told to ponder on the same move the user has played. The engine
 /// should continue searching but switch from pondering to normal search.
 /// (USI 5.3)
-class ponderhit : public command_base {
+class PonderHit : public CommandBase {
  public:
-  virtual void execute(instance& instance) override{
-      // instance.post_result(std::move(result));
-  };
+  void execute(Instance& instance) override {}
 };
-}  // namespace command
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine::command

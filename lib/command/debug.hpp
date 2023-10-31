@@ -3,28 +3,22 @@
 #include "command_base.hpp"
 #include "result_base.hpp"
 
-namespace shogi {
-namespace engine {
-namespace command {
+namespace shogi::engine::command {
 
 /// @brief Switch the debug mode of the engine on and off. In debug mode the
 /// engine should send additional infos to the GUI, e.g. with the info string
 /// command, to help debugging, e.g. the commands that the engine has received
 /// etc. This mode should be switched off by default and this command can be
 /// sent any time, also when the engine is thinking. (USI 5.3)
-class debug : public command_base {
+class Debug : public CommandBase {
  public:
-  enum debug_enabled { ON, OFF };
+  enum DebugEnabled { On, Off };
 
-  debug(debug_enabled enabled) : _enabled{enabled} {}
+  Debug(DebugEnabled enabled) : _enabled{enabled} {}
 
-  virtual void execute(instance& instance) override{
-      // instance.post_result(std::move(result));
-  };
+  void execute(Instance& instance) override {};
 
  private:
-  debug_enabled _enabled;
+  DebugEnabled _enabled;
 };
-}  // namespace command
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine::command

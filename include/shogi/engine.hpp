@@ -5,7 +5,7 @@
 
 namespace shogi {
 namespace engine {
-class interface;
-class instance;
+class Interface;
+class Instance;
 };  // namespace engine
 }  // namespace shogi

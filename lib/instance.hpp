@@ -7,22 +7,23 @@
 #include "result/result_base.hpp"
 #include "utils/thread_safe_queue.hpp"
 
-namespace shogi {
-namespace engine {
+namespace shogi::engine {
 
 /// @brief Engine instance. This is the class that actually processes
 /// requests through calls to its methods.
-class instance {
- protected:
-  option::options _options;
-  utils::thread_safe_queue<result::ResultPtr> _results;
+class Instance {
+  option::Options _options;
+  utils::SafeQueue<result::ResultPtr> _results;
 
  public:
-  instance(instance&) = delete;
-  instance(instance&&) = default;
-  instance() = default;
-  void post_command(command::CommandPtr command);
-  result::ResultPtr get_result();
+  Instance(Instance&) = delete;
+  Instance(Instance&&) = default;
+
+  Instance& operator=(Instance&) = delete;
+  Instance& operator=(Instance&&) = default;
+  Instance() = default;
+  ~Instance() = default;
+  void postCommand(command::CommandPtr command);
+  result::ResultPtr getResult();
 };
-}  // namespace engine
-}  // namespace shogi
+}  // namespace shogi::engine
