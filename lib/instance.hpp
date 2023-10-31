@@ -19,8 +19,8 @@ class instance {
 
  public:
   instance(instance&) = delete;
-  instance(instance&&);
-  instance();
+  instance(instance&&) = default;
+  instance() = default;
   void post_command(command::CommandPtr command);
   result::ResultPtr get_result();
 };

@@ -18,6 +18,7 @@ using CommandPtr = std::unique_ptr<command_base>;
 class command_base {
  public:
   virtual void execute(instance& instance) = 0;
+  virtual ~command_base() = default;
 };
 
 }  // namespace command
