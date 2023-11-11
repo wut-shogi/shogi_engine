@@ -1,10 +1,7 @@
 # build directories
-build
-out
+build/
+out/
 
 # IDE files
-.vscode
-.vs
-
-# git submodules
-external
+.vscode/
+.vs/

@@ -1,5 +1,11 @@
+#pragma once
+
+#include "../lib/instance.hpp"
+#include "../lib/interface.hpp"
+
 namespace shogi {
 namespace engine {
-void test();
-}
+class Interface;
+class Instance;
+};  // namespace engine
 }  // namespace shogi
