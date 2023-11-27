@@ -1,19 +1,23 @@
 set(cudaFiles
-    Bitboard.cu
-    Board.cu
-    kernels.cu
-    MoveGen.cu
+    engine/kernels.cu
 )
 
 set(headerFiles
-    Bitboard.h
-    Board.h
-    MoveGen.h
-    Rules.h
+    engine/Bitboard.h
+    engine/Board.h
+    engine/BoardVisualization.h
+    engine/MoveGen.h
+    engine/MoveGenHelpers.h
+    engine/Rules.h
+    engine/Square.h
 )
 
 set(sourceFiles
-    engine.cpp
+    engine/Bitboard.cpp
+    engine/Board.cpp
+    engine/engine.cpp
+    engine/MoveGen.cpp
+    engine/MoveGenHelpers.cpp
 )
 
 add_library(shogi_engine STATIC
