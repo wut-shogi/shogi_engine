@@ -1,244 +1,118 @@
 #include "Board.h"
 
 Board Boards::STARTING_BOARD() {
+  InHandPieces inHandPieces;
+  inHandPieces.value = 0;
+  NonBitboardPieces nonBitboardPieces;
+  nonBitboardPieces.White.King = Square::A5;
+  nonBitboardPieces.White.Lance1 = Square::A9;
+  nonBitboardPieces.White.Lance2 = Square::A1;
+  nonBitboardPieces.White.Bishop = Square::B2;
+  nonBitboardPieces.White.Rook = Square::B8;
+  nonBitboardPieces.White.Horse = Square::NONE;
+  nonBitboardPieces.White.Dragon = Square::NONE;
+  nonBitboardPieces.Black.King = Square::I5;
+  nonBitboardPieces.Black.Lance1 = Square::I9;
+  nonBitboardPieces.Black.Lance2 = Square::I1;
+  nonBitboardPieces.Black.Bishop = Square::H8;
+  nonBitboardPieces.Black.Rook = Square::H2;
+  nonBitboardPieces.Black.Horse = Square::NONE;
+  nonBitboardPieces.Black.Dragon = Square::NONE;
   static Board b = {{
-      Bitboards::STARTING_PAWN(),
-      Bitboards::STARTING_KNIGHT(),
-      Bitboards::STARTING_SILVER_GENERAL(),
-      Bitboards::STARTING_GOLD_GENERAL(),
-      Bitboards::STARTING_KING(),
-      Bitboards::STARTING_LANCE(),
-      Bitboards::STARTING_BISHOP(),
-      Bitboards::STARTING_ROOK(),
-      Bitboards::STARTING_PROMOTED(),
-      Bitboards::STARTING_ALL_WHITE(),
-      Bitboards::STARTING_ALL_BLACK(),
-      Rotate90Clockwise(Bitboards::STARTING_ALL_WHITE() |
-                        Bitboards::STARTING_ALL_BLACK()),
-      Rotate45Clockwise(Bitboards::STARTING_ALL_WHITE() |
-                        Bitboards::STARTING_ALL_BLACK()),
-      Rotate45AntiClockwise(Bitboards::STARTING_ALL_WHITE() |
-                            Bitboards::STARTING_ALL_BLACK()),
-  }};
+                        Bitboards::STARTING_PAWN(),
+                        Bitboards::STARTING_KNIGHT(),
+                        Bitboards::STARTING_SILVER_GENERAL(),
+                        Bitboards::STARTING_GOLD_GENERAL(),
+                        Bitboards::STARTING_PROMOTED(),
+                        Bitboards::STARTING_ALL_WHITE(),
+                        Bitboards::STARTING_ALL_BLACK(),
+                        Rotate90Clockwise(Bitboards::STARTING_ALL_WHITE() |
+                                          Bitboards::STARTING_ALL_BLACK()),
+                        Rotate45Clockwise(Bitboards::STARTING_ALL_WHITE() |
+                                          Bitboards::STARTING_ALL_BLACK()),
+                        Rotate45AntiClockwise(Bitboards::STARTING_ALL_WHITE() |
+                                              Bitboards::STARTING_ALL_BLACK()),
+                    },
+                    nonBitboardPieces,
+                    inHandPieces};
   return b;
-}
-
-template <>
-const Bitboard& GetPlayerPieces<Player::Type::WHITE>(const Board& position) {
-  return position[BB::Type::ALL_WHITE];
-}
-
-template <>
-const Bitboard& GetPlayerPieces<Player::Type::BLACK>(const Board& position) {
-  return position[BB::Type::ALL_BLACK];
-}
-
-template <>
-Bitboard GetPieces<Piece::Type::PROMOTED_PAWN>(const Board& position) {
-  return position[BB::Type::PAWN] & position[BB::Type::PROMOTED];
-}
-
-template <>
-Bitboard GetPieces<Piece::Type::PROMOTED_KNIGHT>(const Board& position) {
-  return position[BB::Type::KNIGHT] &
-         position[BB::Type::PROMOTED];
-}
-
-template <>
-Bitboard GetPieces<Piece::Type::PROMOTED_SILVER_GENERAL>(
-    const Board& position) {
-  return position[BB::Type::SILVER_GENERAL] &
-         position[BB::Type::PROMOTED];
-}
-
-template <>
-Bitboard GetPieces<Piece::Type::PROMOTED_LANCE>(const Board& position) {
-  return position[BB::Type::LANCE] & position[BB::Type::PROMOTED];
-}
-
-template <>
-Bitboard GetPieces<Piece::Type::HORSE>(const Board& position) {
-  return position[BB::Type::BISHOP] &
-         position[BB::Type::PROMOTED];
-}
-
-template <>
-Bitboard GetPieces<Piece::Type::DRAGON>(const Board& position) {
-  return position[BB::Type::ROOK] & position[BB::Type::PROMOTED];
-}
-
-Bitboard GetPiecesDynamic(Piece::Type piece, const Board& position) {
-  switch (piece) {
-    case Piece::PAWN:
-      return GetPieces<Piece::Type::PAWN>(position);
-    case Piece::KNIGHT:
-      return GetPieces<Piece::Type::KNIGHT>(position);
-    case Piece::SILVER_GENERAL:
-      return GetPieces<Piece::Type::SILVER_GENERAL>(position);
-    case Piece::GOLD_GENERAL:
-      return GetPieces<Piece::Type::GOLD_GENERAL>(position);
-    case Piece::KING:
-      return GetPieces<Piece::Type::KING>(position);
-    case Piece::LANCE:
-      return GetPieces<Piece::Type::LANCE>(position);
-    case Piece::BISHOP:
-      return GetPieces<Piece::Type::BISHOP>(position);
-    case Piece::ROOK:
-      return GetPieces<Piece::Type::ROOK>(position);
-    case Piece::HORSE:
-      return GetPieces<Piece::Type::HORSE>(position);
-    case Piece::DRAGON:
-      return GetPieces<Piece::Type::DRAGON>(position);
-    default:
-      return {0, 0, 0};
-  }
 }
 
 Bitboard GetPlayerPiecesDynamic(Piece::Type piece,
                                 Player::Type player,
                                 const Board& position) {
-  switch (player) {
-    case Player::Type::WHITE:
-      switch (piece) {
-        case Piece::PAWN:
-          return GetPlayerPieces<Piece::Type::PAWN, Player::Type::WHITE>(
-              position);
-        case Piece::KNIGHT:
-          return GetPlayerPieces<Piece::Type::KNIGHT, Player::Type::WHITE>(
-              position);
-        case Piece::SILVER_GENERAL:
-          return GetPlayerPieces<Piece::Type::SILVER_GENERAL,
-                                 Player::Type::WHITE>(position);
-        case Piece::GOLD_GENERAL:
-          return GetPlayerPieces<Piece::Type::GOLD_GENERAL,
-                                 Player::Type::WHITE>(position);
-        case Piece::KING:
-          return GetPlayerPieces<Piece::Type::KING, Player::Type::WHITE>(
-              position);
-        case Piece::LANCE:
-          return GetPlayerPieces<Piece::Type::LANCE, Player::Type::WHITE>(
-              position);
-        case Piece::BISHOP:
-          return GetPlayerPieces<Piece::Type::BISHOP, Player::Type::WHITE>(
-              position);
-        case Piece::ROOK:
-          return GetPlayerPieces<Piece::Type::ROOK, Player::Type::WHITE>(
-              position);
-        case Piece::HORSE:
-          return GetPlayerPieces<Piece::Type::HORSE, Player::Type::WHITE>(
-              position);
-        case Piece::DRAGON:
-          return GetPlayerPieces<Piece::Type::DRAGON, Player::Type::WHITE>(
-              position);
-        default:
-          return {0, 0, 0};
-      }
-    case Player::Type::BLACK:
-      switch (piece) {
-        case Piece::PAWN:
-          return GetPlayerPieces<Piece::Type::PAWN, Player::Type::BLACK>(
-              position);
-        case Piece::KNIGHT:
-          return GetPlayerPieces<Piece::Type::KNIGHT, Player::Type::BLACK>(
-              position);
-        case Piece::SILVER_GENERAL:
-          return GetPlayerPieces<Piece::Type::SILVER_GENERAL,
-                                 Player::Type::BLACK>(position);
-        case Piece::GOLD_GENERAL:
-          return GetPlayerPieces<Piece::Type::GOLD_GENERAL,
-                                 Player::Type::BLACK>(position);
-        case Piece::KING:
-          return GetPlayerPieces<Piece::Type::KING, Player::Type::BLACK>(
-              position);
-        case Piece::LANCE:
-          return GetPlayerPieces<Piece::Type::LANCE, Player::Type::BLACK>(
-              position);
-        case Piece::BISHOP:
-          return GetPlayerPieces<Piece::Type::BISHOP, Player::Type::BLACK>(
-              position);
-        case Piece::ROOK:
-          return GetPlayerPieces<Piece::Type::ROOK, Player::Type::BLACK>(
-              position);
-        case Piece::HORSE:
-          return GetPlayerPieces<Piece::Type::HORSE, Player::Type::BLACK>(
-              position);
-        case Piece::DRAGON:
-          return GetPlayerPieces<Piece::Type::DRAGON, Player::Type::BLACK>(
-              position);
-        default:
-          return {0, 0, 0};
-      }
+  Square pos, pos1, pos2;
+  if (player == Player::Type::WHITE) {
+    switch (piece) {
+      case Piece::PAWN:
+        return position.bbs[BB::Type::PAWN] & position.bbs[BB::Type::ALL_WHITE];
+      case Piece::KNIGHT:
+        return position.bbs[BB::Type::KNIGHT] &
+               position.bbs[BB::Type::ALL_WHITE];
+      case Piece::SILVER_GENERAL:
+        return position.bbs[BB::Type::SILVER_GENERAL] &
+               position.bbs[BB::Type::ALL_WHITE];
+      case Piece::GOLD_GENERAL:
+        return position.bbs[BB::Type::GOLD_GENERAL] &
+               position.bbs[BB::Type::ALL_WHITE];
+      case Piece::KING:
+        pos = static_cast<Square>(position.nonBitboardPieces.White.King);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      case Piece::LANCE:
+        pos1 = static_cast<Square>(position.nonBitboardPieces.White.Lance1);
+        pos2 = static_cast<Square>(position.nonBitboardPieces.White.Lance2);
+        return (pos1 != Square::NONE ? Bitboard(pos1) : Bitboard()) |
+               (pos2 != Square::NONE ? Bitboard(pos2) : Bitboard());
+      case Piece::BISHOP:
+        pos = static_cast<Square>(position.nonBitboardPieces.White.Bishop);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      case Piece::ROOK:
+        pos = static_cast<Square>(position.nonBitboardPieces.White.Rook);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      case Piece::HORSE:
+        pos = static_cast<Square>(position.nonBitboardPieces.White.Horse);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      case Piece::DRAGON:
+        pos = static_cast<Square>(position.nonBitboardPieces.White.Dragon);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      default:
+        return {0, 0, 0};
+    }
+  } else if (player == Player::Type::BLACK) {
+    switch (piece) {
+      case Piece::PAWN:
+        return position.bbs[BB::Type::PAWN] & position.bbs[BB::Type::ALL_BLACK];
+      case Piece::KNIGHT:
+        return position.bbs[BB::Type::KNIGHT] &
+               position.bbs[BB::Type::ALL_BLACK];
+      case Piece::SILVER_GENERAL:
+        return position.bbs[BB::Type::SILVER_GENERAL] &
+               position.bbs[BB::Type::ALL_BLACK];
+      case Piece::GOLD_GENERAL:
+        return position.bbs[BB::Type::GOLD_GENERAL] &
+               position.bbs[BB::Type::ALL_BLACK];
+      case Piece::KING:
+        pos = static_cast<Square>(position.nonBitboardPieces.Black.King);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      case Piece::LANCE:
+        pos1 = static_cast<Square>(position.nonBitboardPieces.Black.Lance1);
+        pos2 = static_cast<Square>(position.nonBitboardPieces.Black.Lance2);
+        return (pos1 != Square::NONE ? Bitboard(pos1) : Bitboard()) |
+               (pos2 != Square::NONE ? Bitboard(pos2) : Bitboard());
+      case Piece::BISHOP:
+        pos = static_cast<Square>(position.nonBitboardPieces.Black.Bishop);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      case Piece::ROOK:
+        pos = static_cast<Square>(position.nonBitboardPieces.Black.Rook);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      case Piece::HORSE:
+        pos = static_cast<Square>(position.nonBitboardPieces.Black.Horse);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      case Piece::DRAGON:
+        pos = static_cast<Square>(position.nonBitboardPieces.Black.Dragon);
+        return pos != Square::NONE ? Bitboard(pos) : Bitboard();
+      default:
+        return {0, 0, 0};
+    }
   }
-}
-
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::PAWN, Player::Type::WHITE>(
-    const Board& position) {
-  return position.inHandPieces.White.Pawn;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::LANCE, Player::Type::WHITE>(
-    const Board& position) {
-  return position.inHandPieces.White.Lance;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::KNIGHT, Player::Type::WHITE>(
-    const Board& position) {
-  return position.inHandPieces.White.Knight;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::SILVER_GENERAL, Player::Type::WHITE>(
-    const Board& position) {
-  return position.inHandPieces.White.SilverGeneral;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::GOLD_GENERAL, Player::Type::WHITE>(
-    const Board& position) {
-  return position.inHandPieces.White.GoldGeneral;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::BISHOP, Player::Type::WHITE>(
-    const Board& position) {
-  return position.inHandPieces.White.Bishop;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::ROOK, Player::Type::WHITE>(
-    const Board& position) {
-  return position.inHandPieces.White.Rook;
-}
-
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::PAWN, Player::Type::BLACK>(
-    const Board& position) {
-  return position.inHandPieces.Black.Pawn;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::LANCE, Player::Type::BLACK>(
-    const Board& position) {
-  return position.inHandPieces.Black.Lance;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::KNIGHT, Player::Type::BLACK>(
-    const Board& position) {
-  return position.inHandPieces.Black.Knight;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::SILVER_GENERAL,
-                                 Player::Type::BLACK>(const Board& position) {
-  return position.inHandPieces.Black.SilverGeneral;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::GOLD_GENERAL,
-                                 Player::Type::BLACK>(const Board& position) {
-  return position.inHandPieces.Black.GoldGeneral;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::BISHOP, Player::Type::BLACK>(
-    const Board& position) {
-  return position.inHandPieces.Black.Bishop;
-}
-template <>
-uint16_t GetNumberOfPiecesInHand<Piece::Type::ROOK, Player::Type::BLACK>(
-    const Board& position) {
-  return position.inHandPieces.Black.Rook;
 }

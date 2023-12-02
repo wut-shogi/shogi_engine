@@ -12,37 +12,46 @@ size_t countAllMoves(const Board& board, bool isWhite) {
   if (isWhite) {
     Bitboard playerMask = board[BB::Type::ALL_WHITE];
     Bitboard validMoves = ~playerMask;
-    moveCount += countWhitePawnMoves(board[BB::Type::PAWN] & playerMask & notPromoted, validMoves);
+    moveCount += countWhitePawnsMoves(
+        board[BB::Type::PAWN] & playerMask & notPromoted, validMoves);
     std::cout << "After pawns: " << moveCount << std::endl;
-    moveCount += countWhiteKnightMoves(
+    moveCount += countWhiteKnightsMoves(
         board[BB::Type::KNIGHT] & playerMask & notPromoted, validMoves);
     std::cout << "After knights: " << moveCount << std::endl;
-    moveCount += countWhiteSilverGeneralMoves(
+    moveCount += countWhiteSilverGeneralsMoves(
         board[BB::Type::SILVER_GENERAL] & playerMask & notPromoted, validMoves);
     std::cout << "After silverGen: " << moveCount << std::endl;
-    moveCount +=
-        countWhiteGoldGeneralMoves((board[BB::Type::GOLD_GENERAL] | ((board[BB::Type::PAWN] | board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL] | board[BB::Type::LANCE]) & promoted)) & playerMask, validMoves);
+    moveCount += countWhiteGoldGeneralsMoves(
+        (board[BB::Type::GOLD_GENERAL] | (board[BB::Type::PAWN] |
+         board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL] |
+         Bitboard(static_cast<Square>(board.nonBitboardPieces.White.Lance1)) |
+         Bitboard(static_cast<Square>(board.nonBitboardPieces.White.Lance2))) &
+            promoted) & playerMask,
+        validMoves);
     std::cout << "After goldGen: " << moveCount << std::endl;
-    moveCount +=
-        countKingMoves(board[BB::Type::KING] & playerMask, validMoves);
+    moveCount += countKingMoves(
+        static_cast<Square>(board.nonBitboardPieces.White.King), validMoves);
     std::cout << "After king: " << moveCount << std::endl;
-    moveCount +=
-        countWhiteLanceMoves(board[BB::Type::LANCE] & notPromoted & playerMask,
-                             validMoves, occupiedRot90);
+    moveCount += countWhiteLancesMoves(
+        static_cast<Square>(board.nonBitboardPieces.White.Lance1),
+        static_cast<Square>(board.nonBitboardPieces.White.Lance2), validMoves,
+        occupiedRot90);
     std::cout << "After lance: " << moveCount << std::endl;
-    moveCount +=
-        countWhiteBishopMoves(board[BB::Type::BISHOP] & notPromoted & playerMask, validMoves, occupiedRot45Right, occupiedRot45Left);
+    moveCount += countWhiteBishopMoves(
+        static_cast<Square>(board.nonBitboardPieces.White.Bishop), validMoves,
+        occupiedRot45Right, occupiedRot45Left);
     std::cout << "After bishop: " << moveCount << std::endl;
-    moveCount +=
-        countWhiteRookMoves(board[BB::Type::ROOK] & notPromoted & playerMask,
-                            validMoves, occupied, occupiedRot90);
+    moveCount += countWhiteRookMoves(
+        static_cast<Square>(board.nonBitboardPieces.White.Rook), validMoves,
+        occupied, occupiedRot90);
     std::cout << "After rook: " << moveCount << std::endl;
-    moveCount +=
-        countHorseMoves(board[BB::Type::BISHOP] & promoted & playerMask, validMoves,
-                              occupiedRot45Right, occupiedRot45Left);
+    moveCount += countHorseMoves(
+        static_cast<Square>(board.nonBitboardPieces.White.Horse), validMoves,
+        occupiedRot45Right, occupiedRot45Left);
     std::cout << "After horse: " << moveCount << std::endl;
-    moveCount += countDragonMoves(board[BB::Type::ROOK] & promoted & playerMask,
-                                     validMoves, occupied, occupiedRot90);
+    moveCount += countDragonMoves(
+        static_cast<Square>(board.nonBitboardPieces.White.Dragon), validMoves,
+        occupied, occupiedRot90);
     std::cout << "After dragon: " << moveCount << std::endl;
     moveCount += countDropMoves(board.inHandPieces.White, ~occupied,
                                 board[BB::Type::PAWN] & playerMask,
@@ -51,42 +60,46 @@ size_t countAllMoves(const Board& board, bool isWhite) {
   } else {
     Bitboard playerMask = board[BB::Type::ALL_BLACK];
     Bitboard validMoves = ~playerMask;
-    moveCount += countBlackPawnMoves(
+    moveCount += countBlackPawnsMoves(
         board[BB::Type::PAWN] & playerMask & notPromoted, validMoves);
     std::cout << "After pawns: " << moveCount << std::endl;
-    moveCount += countBlackKnightMoves(
+    moveCount += countBlackKnightsMoves(
         board[BB::Type::KNIGHT] & playerMask & notPromoted, validMoves);
     std::cout << "After knights: " << moveCount << std::endl;
-    moveCount += countBlackSilverGeneralMoves(
+    moveCount += countBlackSilverGeneralsMoves(
         board[BB::Type::SILVER_GENERAL] & playerMask & notPromoted, validMoves);
     std::cout << "After silverGen: " << moveCount << std::endl;
-    moveCount += countBlackGoldGeneralMoves(
-        (board[BB::Type::GOLD_GENERAL] |
-         ((board[BB::Type::PAWN] | board[BB::Type::KNIGHT] |
-           board[BB::Type::SILVER_GENERAL] | board[BB::Type::LANCE]) &
-          promoted)) & playerMask,
+    moveCount += countBlackGoldGeneralsMoves(
+        (board[BB::Type::GOLD_GENERAL] | (board[BB::Type::PAWN] |
+         board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL] |
+         Bitboard(static_cast<Square>(board.nonBitboardPieces.Black.Lance1)) |
+         Bitboard(static_cast<Square>(board.nonBitboardPieces.Black.Lance2))) &
+            promoted) & playerMask,
         validMoves);
     std::cout << "After goldGen: " << moveCount << std::endl;
-    moveCount += countKingMoves(board[BB::Type::KING] & playerMask, validMoves);
+    moveCount += countKingMoves(
+        static_cast<Square>(board.nonBitboardPieces.Black.King), validMoves);
     std::cout << "After king: " << moveCount << std::endl;
-    moveCount +=
-        countBlackLanceMoves(board[BB::Type::LANCE] & notPromoted & playerMask,
-                             validMoves, occupiedRot90);
+    moveCount += countBlackLancesMoves(
+        static_cast<Square>(board.nonBitboardPieces.Black.Lance1),
+        static_cast<Square>(board.nonBitboardPieces.Black.Lance2), validMoves,
+        occupiedRot90);
     std::cout << "After lance: " << moveCount << std::endl;
     moveCount += countBlackBishopMoves(
-        board[BB::Type::BISHOP] & notPromoted & playerMask, validMoves,
+        static_cast<Square>(board.nonBitboardPieces.Black.Bishop), validMoves,
         occupiedRot45Right, occupiedRot45Left);
     std::cout << "After bishop: " << moveCount << std::endl;
-    moveCount +=
-        countBlackRookMoves(board[BB::Type::ROOK] & notPromoted & playerMask,
-                            validMoves, occupied, occupiedRot90);
+    moveCount += countBlackRookMoves(
+        static_cast<Square>(board.nonBitboardPieces.Black.Rook), validMoves,
+        occupied, occupiedRot90);
     std::cout << "After rook: " << moveCount << std::endl;
-    moveCount +=
-        countHorseMoves(board[BB::Type::BISHOP] & promoted & playerMask,
-                        validMoves, occupiedRot45Right, occupiedRot45Left);
+    moveCount += countHorseMoves(
+        static_cast<Square>(board.nonBitboardPieces.Black.Horse), validMoves,
+        occupiedRot45Right, occupiedRot45Left);
     std::cout << "After horse: " << moveCount << std::endl;
-    moveCount += countDragonMoves(board[BB::Type::ROOK] & promoted & playerMask,
-                                  validMoves, occupied, occupiedRot90);
+    moveCount += countDragonMoves(
+        static_cast<Square>(board.nonBitboardPieces.Black.Dragon), validMoves,
+        occupied, occupiedRot90);
     std::cout << "After dragon: " << moveCount << std::endl;
     moveCount += countDropMoves(board.inHandPieces.Black, ~occupied,
                                 board[BB::Type::PAWN] & playerMask,

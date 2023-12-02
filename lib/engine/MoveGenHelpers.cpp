@@ -1,6 +1,7 @@
 #include "MoveGenHelpers.h"
 #include <algorithm>
 
+/// Static arrays initialization
 // Attack bitboards
 std::array<std::array<Bitboard, BOARD_SIZE>, 128> initRankAttacks();
 std::array<std::array<Bitboard, BOARD_SIZE>, 128> initFileAttacks();
@@ -120,7 +121,6 @@ static uint32_t getDiagLeftBlockPattern(const Bitboard& bbRot45Left,
   uint32_t value = aftershift & (mask[square] / 4);
   return value;
 }
-
 
 std::array<bool, 9> blockPatternToRow(uint32_t blockPattern) {
   uint32_t block = blockPattern << 1;
@@ -406,429 +406,478 @@ Bitboard moveNW(Bitboard bb) {
   return out;
 }
 
-size_t countWhitePawnMoves(const Bitboard pawns, const Bitboard& validMoves) {
-  Bitboard moved = moveS(pawns) & validMoves;
-  return std::popcount<uint32_t>(moved[TOP]) +
-         std::popcount<uint32_t>(moved[MID]) +
-         std::popcount<uint32_t>(moved[BOTTOM] & (~BOTTOM_RANK)) * 2 +
-         std::popcount<uint32_t>(moved[BOTTOM] & BOTTOM_RANK);
+// Attack bitboards
+void whitePawnsAttackBitboards(const Bitboard pawns,
+                               Bitboard* outAttacksBitboards) {
+  outAttacksBitboards[0] = moveS(pawns);
 }
-
-size_t countBlackPawnMoves(const Bitboard pawns, const Bitboard& validMoves) {
-  Bitboard moved = moveN(pawns) & validMoves;
-  return std::popcount<uint32_t>(moved[BOTTOM]) +
-         std::popcount<uint32_t>(moved[MID]) +
-         std::popcount<uint32_t>(moved[TOP] & (~TOP_RANK)) * 2 +
-         std::popcount<uint32_t>(moved[TOP] & TOP_RANK);
+void blackPawnsAttackBitboards(const Bitboard pawns,
+                               Bitboard* outAttacksBitboards) {
+  outAttacksBitboards[0] = moveN(pawns);
 }
-
-size_t countWhiteKnightMoves(const Bitboard knights,
-                             const Bitboard& validMoves) {
-  // SSE move
-  Bitboard moved = moveS(moveSE(knights)) & validMoves;
-  int moveCount = std::popcount<uint32_t>(moved[TOP]) +
-                  std::popcount<uint32_t>(moved[MID]) +
-                  std::popcount<uint32_t>(moved[BOTTOM] & (TOP_RANK)) * 2 +
-                  std::popcount<uint32_t>(moved[BOTTOM] & (~TOP_RANK));
-  // SSW move
-  moved = moveS(moveSW(knights)) & validMoves;
-  return moveCount + std::popcount<uint32_t>(moved[TOP]) +
-         std::popcount<uint32_t>(moved[MID]) +
-         std::popcount<uint32_t>(moved[BOTTOM] & (TOP_RANK)) * 2 +
-         std::popcount<uint32_t>(moved[BOTTOM] & (~TOP_RANK));
+void whiteKnightsAttackBitboards(const Bitboard knights,
+                                 Bitboard* outAttacksBitboards) {
+  outAttacksBitboards[0] = moveS(moveSE(knights));
+  outAttacksBitboards[1] = moveS(moveSW(knights));
 }
-
-size_t countBlackKnightMoves(const Bitboard knights,
-                             const Bitboard& validMoves) {
-  // NNE move
-  Bitboard moved = moveN(moveNE(knights)) & validMoves;
-  int moveCount = std::popcount<uint32_t>(moved[BOTTOM]) +
-                  std::popcount<uint32_t>(moved[MID]) +
-                  std::popcount<uint32_t>(moved[TOP] & (BOTTOM_RANK)) * 2 +
-                  std::popcount<uint32_t>(moved[TOP] & (~BOTTOM_RANK));
-  // NNW move
-  moved = moveN(moveNW(knights)) & validMoves;
-  return moveCount + std::popcount<uint32_t>(moved[BOTTOM]) +
-         std::popcount<uint32_t>(moved[MID]) +
-         std::popcount<uint32_t>(moved[TOP] & (BOTTOM_RANK)) * 2 +
-         std::popcount<uint32_t>(moved[TOP] & (~BOTTOM_RANK));
+void blackKnightsAttackBitboards(const Bitboard knights,
+                                 Bitboard* outAttacksBitboards) {
+  outAttacksBitboards[0] = moveN(moveNE(knights));
+  outAttacksBitboards[1] = moveN(moveNW(knights));
 }
-
-size_t countWhiteSilverGeneralMoves(const Bitboard silverGenerals,
-                                    const Bitboard& validMoves) {
-  // S Move
-  Bitboard moved = moveS(silverGenerals) & validMoves;
-  int moveCount = std::popcount<uint32_t>(moved[TOP]) +
-                  std::popcount<uint32_t>(moved[MID]) +
-                  std::popcount<uint32_t>(moved[BOTTOM]) * 2;
-  // SE Move
-  moved = moveSE(silverGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[TOP]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[BOTTOM]) * 2;
-
-  // SW Move
-  moved = moveSW(silverGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[TOP]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[BOTTOM]) * 2;
-
-  // NE Move
-  moved = moveNE(silverGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[TOP]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[BOTTOM]) * 2;
-
-  // NW Move
-  moved = moveNW(silverGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[TOP]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[BOTTOM]) * 2;
-
-  return moveCount;
+void whiteSilverGeneralsAttackBitboards(const Bitboard silverGenerals,
+                                        Bitboard* outAttacksBitboards) {
+  outAttacksBitboards[0] = moveNE(silverGenerals);
+  outAttacksBitboards[1] = moveNW(silverGenerals);
+  outAttacksBitboards[2] = moveSE(silverGenerals);
+  outAttacksBitboards[3] = moveS(silverGenerals);
+  outAttacksBitboards[4] = moveSW(silverGenerals);
 }
-
-size_t countBlackSilverGeneralMoves(const Bitboard silverGenerals,
-                                    const Bitboard& validMoves) {
-  // N Move
-  Bitboard moved = moveN(silverGenerals) & validMoves;
-  int moveCount = std::popcount<uint32_t>(moved[BOTTOM]) +
-                  std::popcount<uint32_t>(moved[MID]) +
-                  std::popcount<uint32_t>(moved[TOP]) * 2;
-  // NE Move
-  moved = moveNE(silverGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]) * 2;
-
-  // SE Move
-  moved = moveSE(silverGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]) * 2;
-
-  // SW Move
-  moved = moveSW(silverGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]) * 2;
-
-  // NW Move
-  moved = moveNW(silverGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]) * 2;
-
-  return moveCount;
+void blackSilverGeneralsAttackBitboards(const Bitboard silverGenerals,
+                                        Bitboard* outAttacksBitboards) {
+  outAttacksBitboards[0] = moveSE(silverGenerals);
+  outAttacksBitboards[1] = moveSW(silverGenerals);
+  outAttacksBitboards[2] = moveNE(silverGenerals);
+  outAttacksBitboards[3] = moveN(silverGenerals);
+  outAttacksBitboards[4] = moveNW(silverGenerals);
 }
-
-size_t countWhiteGoldGeneralMoves(const Bitboard goldGenerals,
-                                  const Bitboard& validMoves) {
-  // S Move
-  Bitboard moved = moveS(goldGenerals) & validMoves;
-  int moveCount = std::popcount<uint32_t>(moved[BOTTOM]) +
-                  std::popcount<uint32_t>(moved[MID]) +
-                  std::popcount<uint32_t>(moved[TOP]);
-  // SE Move
-  moved = moveSE(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  // SW Move
-  moved = moveSW(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  // E Move
-  moved = moveE(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  // W Move
-  moved = moveW(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  // N Move
-  moved = moveN(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  return moveCount;
+void whiteGoldGeneralsAttackBitboards(const Bitboard goldGenerals,
+                                      Bitboard* outAttacksBitboards) {
+  outAttacksBitboards[0] = moveSE(goldGenerals);
+  outAttacksBitboards[1] = moveS(goldGenerals);
+  outAttacksBitboards[2] = moveSW(goldGenerals);
+  outAttacksBitboards[3] = moveE(goldGenerals);
+  outAttacksBitboards[4] = moveN(goldGenerals);
+  outAttacksBitboards[5] = moveW(goldGenerals);
 }
-
-size_t countBlackGoldGeneralMoves(const Bitboard goldGenerals,
-                                  const Bitboard& validMoves) {
-  // N Move
-  Bitboard moved = moveN(goldGenerals) & validMoves;
-  int moveCount = std::popcount<uint32_t>(moved[BOTTOM]) +
-                  std::popcount<uint32_t>(moved[MID]) +
-                  std::popcount<uint32_t>(moved[TOP]);
-  // NE Move
-  moved = moveNE(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  // NW Move
-  moved = moveNW(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  // E Move
-  moved = moveE(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  // W Move
-  moved = moveW(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  // S Move
-  moved = moveS(goldGenerals) & validMoves;
-  moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-               std::popcount<uint32_t>(moved[MID]) +
-               std::popcount<uint32_t>(moved[TOP]);
-
-  return moveCount;
+void blackGoldGeneralsAttackBitboards(const Bitboard goldGenerals,
+                                      Bitboard* outAttacksBitboards) {
+  outAttacksBitboards[0] = moveNE(goldGenerals);
+  outAttacksBitboards[1] = moveN(goldGenerals);
+  outAttacksBitboards[2] = moveNW(goldGenerals);
+  outAttacksBitboards[3] = moveE(goldGenerals);
+  outAttacksBitboards[4] = moveS(goldGenerals);
+  outAttacksBitboards[5] = moveW(goldGenerals);
 }
-
-size_t countKingMoves(const Bitboard king, const Bitboard& validMoves) {
-  Bitboard moved = (moveN(king) | moveNE(king) | moveE(king) | moveSE(king) |
-                    moveS(king) | moveSW(king) | moveW(king) | moveNW(king)) &
-                   validMoves;
-  return std::popcount<uint32_t>(moved[BOTTOM]) +
-         std::popcount<uint32_t>(moved[MID]) +
-         std::popcount<uint32_t>(moved[TOP]);
+void kingAttackBitboards(const Square king, Bitboard* outAttacksBitboards) {
+  Bitboard kingBB = Bitboard(king);
+  outAttacksBitboards[0] = moveNE(kingBB);
+  outAttacksBitboards[1] = moveN(kingBB);
+  outAttacksBitboards[2] = moveNW(kingBB);
+  outAttacksBitboards[3] = moveE(kingBB);
+  outAttacksBitboards[4] = moveW(kingBB);
+  outAttacksBitboards[5] = moveSE(kingBB);
+  outAttacksBitboards[6] = moveS(kingBB);
+  outAttacksBitboards[7] = moveSW(kingBB);
 }
-
-size_t countWhiteLanceMoves(const Bitboard lances,
-                            const Bitboard& validMoves,
-                            const Bitboard& occupiedRot90) {
-  int moveCount = 0;
-  int numberOfLances = 0;
-  BitboardIterator iterator(lances);
-  while (numberOfLances < 2 && iterator.Next()) {
-    if (iterator.IsCurrentSquareOccupied()) {
-      numberOfLances++;
-      Bitboard moved =
-          fileAttacks[getFileBlockPattern(occupiedRot90,
-                                          iterator.GetCurrentSquare())]
-                     [iterator.GetCurrentSquare()] &
-          whiteLanceMasks[squareToRank(iterator.GetCurrentSquare())] &
-          validMoves;
-
-      moveCount += std::popcount<uint32_t>(moved[TOP]) +
-                   std::popcount<uint32_t>(moved[MID]) +
-                   std::popcount<uint32_t>(moved[BOTTOM] & (~BOTTOM_RANK)) * 2 +
-                   std::popcount<uint32_t>(moved[BOTTOM] & BOTTOM_RANK);
-    }
+void whiteLanceAttackBitboards(const Square lance,
+                               const Bitboard& occupiedRot90,
+                               Bitboard* outAttacksBitboards) {
+  if (lance == Square::NONE) {
+    outAttacksBitboards[0] = Bitboard();
+    return;
   }
-  return moveCount;
+  outAttacksBitboards[0] = fileAttacks[getFileBlockPattern(occupiedRot90, lance)][lance] &
+              whiteLanceMasks[squareToRank(lance)];
 }
-
-size_t countBlackLanceMoves(const Bitboard lances,
-                            const Bitboard& validMoves,
-                            const Bitboard& occupiedRot90) {
-  int moveCount = 0;
-  int numberOfLances = 0;
-  BitboardIterator iterator(lances);
-  while (numberOfLances < 2 && iterator.Next()) {
-    if (iterator.IsCurrentSquareOccupied()) {
-      numberOfLances++;
-      Bitboard moved =
-          fileAttacks[getFileBlockPattern(occupiedRot90,
-                                          iterator.GetCurrentSquare())]
-                     [iterator.GetCurrentSquare()] &
-          blackLanceMasks[squareToRank(iterator.GetCurrentSquare())] &
-          validMoves;
-
-      moveCount += std::popcount<uint32_t>(moved[BOTTOM]) +
-                   std::popcount<uint32_t>(moved[MID]) +
-                   std::popcount<uint32_t>(moved[TOP] & (~BOTTOM_RANK)) * 2 +
-                   std::popcount<uint32_t>(moved[TOP] & BOTTOM_RANK);
-    }
+void blackLanceAttackBitboards(const Square lance,
+                               const Bitboard& occupiedRot90,
+                               Bitboard* outAttacksBitboards) {
+  if (lance == Square::NONE) {
+    outAttacksBitboards[0] = Bitboard();
+    return;
   }
-  return moveCount;
+  outAttacksBitboards[0] = fileAttacks[getFileBlockPattern(occupiedRot90, lance)][lance] &
+                 blackLanceMasks[squareToRank(lance)];
+}
+void bishopAttackBitboards(const Square bishop,
+                           const Bitboard& occupiedRot45Right,
+                           const Bitboard& occupiedRot45Left,
+                           Bitboard* outAttacksBitboards) {
+  if (bishop == Square::NONE) {
+    outAttacksBitboards[0] = Bitboard();
+    return;
+  }
+  outAttacksBitboards[0] = diagRightAttacks[getDiagRightBlockPattern(
+                                    occupiedRot45Right, bishop)][bishop] |
+                                    diagLeftAttacks[getDiagLeftBlockPattern(
+                                        occupiedRot45Left, bishop)][bishop];
+}
+void rookAttackBitboards(const Square rook,
+                         const Bitboard& occupied,
+                         const Bitboard& occupiedRot90,
+                         Bitboard* outAttacksBitboards) {
+  if (rook == Square::NONE) {
+    outAttacksBitboards[0] = Bitboard();
+    return;
+  }
+  outAttacksBitboards[0] = rankAttacks[getRankBlockPattern(occupied, rook)][rook] |
+                 fileAttacks[getFileBlockPattern(occupiedRot90, rook)][rook];
+}
+void horseAttackBitboards(const Square horse,
+                          const Bitboard& occupiedRot45Right,
+                          const Bitboard& occupiedRot45Left,
+                          Bitboard* outAttacksBitboards) {
+  if (horse == Square::NONE) {
+    outAttacksBitboards[0] = Bitboard();
+    return;
+  }
+  Bitboard horseBB = Bitboard(horse);
+  outAttacksBitboards[0] = diagRightAttacks[getDiagRightBlockPattern(
+                                   occupiedRot45Right, horse)][horse] |
+                                   diagLeftAttacks[getDiagLeftBlockPattern(
+                                       occupiedRot45Left, horse)][horse] |
+                                   moveN(horseBB) | moveE(horseBB) |
+                                   moveS(horseBB) | moveW(horseBB);
+  ;
+}
+void dragonAttackBitboards(const Square dragon,
+                           const Bitboard& occupied,
+                           const Bitboard& occupiedRot90,
+                           Bitboard* outAttacksBitboards) {
+  if (dragon == Square::NONE) {
+    outAttacksBitboards[0] = Bitboard();
+    return;
+  }
+  Bitboard dragonBB = Bitboard(dragon);
+  outAttacksBitboards[0] = rankAttacks[getRankBlockPattern(occupied, dragon)][dragon] |
+                 fileAttacks[getFileBlockPattern(occupiedRot90, dragon)]
+                            [dragon] |
+                 moveNW(dragonBB) | moveNE(dragonBB) | moveSE(dragonBB) |
+                 moveSW(dragonBB);
+  ;
+  ;
 }
 
-size_t countWhiteBishopMoves(const Bitboard bishops,
+size_t countWhitePawnsMoves(const Bitboard pawns, const Bitboard& validMoves) {
+  Bitboard attacks;
+  whitePawnsAttackBitboards(pawns, &attacks);
+  attacks &= validMoves;
+  return std::popcount<uint32_t>(attacks[TOP]) +
+         std::popcount<uint32_t>(attacks[MID]) +
+         std::popcount<uint32_t>(attacks[BOTTOM] & (~BOTTOM_RANK)) * 2 +
+         std::popcount<uint32_t>(attacks[BOTTOM] & BOTTOM_RANK);
+}
+
+size_t countBlackPawnsMoves(const Bitboard pawns, const Bitboard& validMoves) {
+  Bitboard attacks;
+  blackPawnsAttackBitboards(pawns, &attacks);
+  attacks &= validMoves;
+  return std::popcount<uint32_t>(attacks[BOTTOM]) +
+         std::popcount<uint32_t>(attacks[MID]) +
+         std::popcount<uint32_t>(attacks[TOP] & (~TOP_RANK)) * 2 +
+         std::popcount<uint32_t>(attacks[TOP] & TOP_RANK);
+}
+
+size_t countWhiteKnightsMoves(const Bitboard knights,
+                              const Bitboard& validMoves) {
+  Bitboard attacks[2];
+  whiteKnightsAttackBitboards(knights, attacks);
+  attacks[0] &= validMoves;
+  attacks[1] &= validMoves;
+  return std::popcount<uint32_t>(attacks[0][TOP]) +
+         std::popcount<uint32_t>(attacks[0][MID]) +
+         std::popcount<uint32_t>(attacks[0][BOTTOM] & (TOP_RANK)) * 2 +
+         std::popcount<uint32_t>(attacks[0][BOTTOM] & (~TOP_RANK)) +
+         std::popcount<uint32_t>(attacks[1][TOP]) +
+         std::popcount<uint32_t>(attacks[1][MID]) +
+         std::popcount<uint32_t>(attacks[1][BOTTOM] & (TOP_RANK)) * 2 +
+         std::popcount<uint32_t>(attacks[1][BOTTOM] & (~TOP_RANK));
+}
+
+size_t countBlackKnightsMoves(const Bitboard knights,
+                              const Bitboard& validMoves) {
+  Bitboard attacks[2];
+  blackKnightsAttackBitboards(knights, attacks);
+  attacks[0] &= validMoves;
+  attacks[1] &= validMoves;
+  return std::popcount<uint32_t>(attacks[0][BOTTOM]) +
+                  std::popcount<uint32_t>(attacks[0][MID]) +
+                  std::popcount<uint32_t>(attacks[0][TOP] & (BOTTOM_RANK)) * 2 +
+                  std::popcount<uint32_t>(attacks[0][TOP] & (~BOTTOM_RANK)) +
+                  std::popcount<uint32_t>(attacks[1][BOTTOM]) +
+                  std::popcount<uint32_t>(attacks[1][MID]) +
+                  std::popcount<uint32_t>(attacks[1][TOP] & (BOTTOM_RANK)) * 2 +
+                  std::popcount<uint32_t>(attacks[1][TOP] & (~BOTTOM_RANK));
+}
+
+size_t countWhiteSilverGeneralsMoves(const Bitboard silverGenerals,
+                                     const Bitboard& validMoves) {
+  Bitboard attacks[5];
+  whiteSilverGeneralsAttackBitboards(silverGenerals, attacks);
+  attacks[0] &= validMoves;
+  attacks[1] &= validMoves;
+  attacks[2] &= validMoves;
+  attacks[3] &= validMoves;
+  attacks[4] &= validMoves;
+  return std::popcount<uint32_t>(attacks[0][TOP]) +
+         std::popcount<uint32_t>(attacks[0][MID]) +
+         std::popcount<uint32_t>(attacks[0][BOTTOM]) * 2 +
+         std::popcount<uint32_t>(attacks[1][TOP]) +
+         std::popcount<uint32_t>(attacks[1][MID]) +
+         std::popcount<uint32_t>(attacks[1][BOTTOM]) * 2 +
+         std::popcount<uint32_t>(attacks[2][TOP]) +
+         std::popcount<uint32_t>(attacks[2][MID]) +
+         std::popcount<uint32_t>(attacks[2][BOTTOM]) * 2 +
+         std::popcount<uint32_t>(attacks[3][TOP]) +
+         std::popcount<uint32_t>(attacks[3][MID]) +
+         std::popcount<uint32_t>(attacks[3][BOTTOM]) * 2 +
+         std::popcount<uint32_t>(attacks[4][TOP]) +
+         std::popcount<uint32_t>(attacks[4][MID]) +
+         std::popcount<uint32_t>(attacks[4][BOTTOM]) * 2;
+}
+
+size_t countBlackSilverGeneralsMoves(const Bitboard silverGenerals,
+                                     const Bitboard& validMoves) {
+  Bitboard attacks[5];
+  blackSilverGeneralsAttackBitboards(silverGenerals, attacks);
+  attacks[0] &= validMoves;
+  attacks[1] &= validMoves;
+  attacks[2] &= validMoves;
+  attacks[3] &= validMoves;
+  attacks[4] &= validMoves;
+  return std::popcount<uint32_t>(attacks[0][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[0][MID]) +
+         std::popcount<uint32_t>(attacks[0][TOP]) * 2 +
+         std::popcount<uint32_t>(attacks[1][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[1][MID]) +
+         std::popcount<uint32_t>(attacks[1][TOP]) * 2 +
+         std::popcount<uint32_t>(attacks[2][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[2][MID]) +
+         std::popcount<uint32_t>(attacks[2][TOP]) * 2 +
+         std::popcount<uint32_t>(attacks[3][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[3][MID]) +
+         std::popcount<uint32_t>(attacks[3][TOP]) * 2 +
+         std::popcount<uint32_t>(attacks[4][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[4][MID]) +
+         std::popcount<uint32_t>(attacks[4][TOP]) * 2;
+}
+
+size_t countWhiteGoldGeneralsMoves(const Bitboard goldGenerals,
+                                   const Bitboard& validMoves) {
+  Bitboard attacks[6];
+  whiteGoldGeneralsAttackBitboards(goldGenerals, attacks);
+  attacks[0] &= validMoves;
+  attacks[1] &= validMoves;
+  attacks[2] &= validMoves;
+  attacks[3] &= validMoves;
+  attacks[4] &= validMoves;
+  attacks[5] &= validMoves;
+  return std::popcount<uint32_t>(attacks[0][TOP]) +
+         std::popcount<uint32_t>(attacks[0][MID]) +
+         std::popcount<uint32_t>(attacks[0][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[1][TOP]) +
+         std::popcount<uint32_t>(attacks[1][MID]) +
+         std::popcount<uint32_t>(attacks[1][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[2][TOP]) +
+         std::popcount<uint32_t>(attacks[2][MID]) +
+         std::popcount<uint32_t>(attacks[2][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[3][TOP]) +
+         std::popcount<uint32_t>(attacks[3][MID]) +
+         std::popcount<uint32_t>(attacks[3][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[4][TOP]) +
+         std::popcount<uint32_t>(attacks[4][MID]) +
+         std::popcount<uint32_t>(attacks[4][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[5][TOP]) +
+         std::popcount<uint32_t>(attacks[5][MID]) +
+         std::popcount<uint32_t>(attacks[5][BOTTOM]);
+}
+
+size_t countBlackGoldGeneralsMoves(const Bitboard goldGenerals,
+                                   const Bitboard& validMoves) {
+  Bitboard attacks[6];
+  blackGoldGeneralsAttackBitboards(goldGenerals, attacks);
+  attacks[0] &= validMoves;
+  attacks[1] &= validMoves;
+  attacks[2] &= validMoves;
+  attacks[3] &= validMoves;
+  attacks[4] &= validMoves;
+  attacks[5] &= validMoves;
+  return std::popcount<uint32_t>(attacks[0][TOP]) +
+         std::popcount<uint32_t>(attacks[0][MID]) +
+         std::popcount<uint32_t>(attacks[0][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[1][TOP]) +
+         std::popcount<uint32_t>(attacks[1][MID]) +
+         std::popcount<uint32_t>(attacks[1][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[2][TOP]) +
+         std::popcount<uint32_t>(attacks[2][MID]) +
+         std::popcount<uint32_t>(attacks[2][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[3][TOP]) +
+         std::popcount<uint32_t>(attacks[3][MID]) +
+         std::popcount<uint32_t>(attacks[3][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[4][TOP]) +
+         std::popcount<uint32_t>(attacks[4][MID]) +
+         std::popcount<uint32_t>(attacks[4][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[5][TOP]) +
+         std::popcount<uint32_t>(attacks[5][MID]) +
+         std::popcount<uint32_t>(attacks[5][BOTTOM]);
+}
+
+size_t countKingMoves(const Square king, const Bitboard& validMoves) {
+  Bitboard attacks[8];
+  kingAttackBitboards(king, attacks);
+  attacks[0] &= validMoves;
+  attacks[1] &= validMoves;
+  attacks[2] &= validMoves;
+  attacks[3] &= validMoves;
+  attacks[4] &= validMoves;
+  attacks[5] &= validMoves;
+  attacks[6] &= validMoves;
+  attacks[7] &= validMoves;
+  return std::popcount<uint32_t>(attacks[0][TOP]) +
+         std::popcount<uint32_t>(attacks[0][MID]) +
+         std::popcount<uint32_t>(attacks[0][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[1][TOP]) +
+         std::popcount<uint32_t>(attacks[1][MID]) +
+         std::popcount<uint32_t>(attacks[1][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[2][TOP]) +
+         std::popcount<uint32_t>(attacks[2][MID]) +
+         std::popcount<uint32_t>(attacks[2][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[3][TOP]) +
+         std::popcount<uint32_t>(attacks[3][MID]) +
+         std::popcount<uint32_t>(attacks[3][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[4][TOP]) +
+         std::popcount<uint32_t>(attacks[4][MID]) +
+         std::popcount<uint32_t>(attacks[4][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[5][TOP]) +
+         std::popcount<uint32_t>(attacks[5][MID]) +
+         std::popcount<uint32_t>(attacks[5][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[6][TOP]) +
+         std::popcount<uint32_t>(attacks[6][MID]) +
+         std::popcount<uint32_t>(attacks[6][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[7][TOP]) +
+         std::popcount<uint32_t>(attacks[7][MID]) +
+         std::popcount<uint32_t>(attacks[7][BOTTOM]);
+}
+
+size_t countWhiteLancesMoves(const Square lance1,
+                             const Square lance2,
+                             const Bitboard& validMoves,
+                             const Bitboard& occupiedRot90) {
+  Bitboard attacks[2];
+  whiteLanceAttackBitboards(lance1, occupiedRot90, attacks);
+  whiteLanceAttackBitboards(lance2, occupiedRot90, attacks + 1);
+  attacks[0] &= validMoves;
+  attacks[1] &= validMoves;
+  return std::popcount<uint32_t>(attacks[0][TOP]) +
+         std::popcount<uint32_t>(attacks[0][MID]) +
+         std::popcount<uint32_t>(attacks[0][BOTTOM] & (~BOTTOM_RANK)) * 2 +
+         std::popcount<uint32_t>(attacks[0][BOTTOM] & BOTTOM_RANK) +
+         std::popcount<uint32_t>(attacks[1][TOP]) +
+         std::popcount<uint32_t>(attacks[1][MID]) +
+         std::popcount<uint32_t>(attacks[1][BOTTOM] & (~BOTTOM_RANK)) * 2 +
+         std::popcount<uint32_t>(attacks[1][BOTTOM] & BOTTOM_RANK);
+}
+
+size_t countBlackLancesMoves(const Square lance1,
+                             const Square lance2,
+                             const Bitboard& validMoves,
+                             const Bitboard& occupiedRot90) {
+  Bitboard attacks[2];
+  blackLanceAttackBitboards(lance1, occupiedRot90, attacks);
+  blackLanceAttackBitboards(lance2, occupiedRot90, attacks + 1);
+  attacks[0] &= validMoves;
+  attacks[1] &= validMoves;
+  return std::popcount<uint32_t>(attacks[0][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[0][MID]) +
+         std::popcount<uint32_t>(attacks[0][TOP] & (~TOP_RANK)) * 2 +
+         std::popcount<uint32_t>(attacks[0][TOP] & TOP_RANK) +
+         std::popcount<uint32_t>(attacks[1][BOTTOM]) +
+         std::popcount<uint32_t>(attacks[1][MID]) +
+         std::popcount<uint32_t>(attacks[1][TOP] & (~TOP_RANK)) * 2 +
+         std::popcount<uint32_t>(attacks[1][TOP] & TOP_RANK);
+}
+
+size_t countWhiteBishopMoves(const Square bishop,
                              const Bitboard& validMoves,
                              const Bitboard& occupiedRot45Right,
                              const Bitboard& occupiedRot45Left) {
-  int moveCount = 0;
-  int numberOfBishops = 0;
-  BitboardIterator iterator(bishops);
-  while (numberOfBishops < 1 && iterator.Next()) {
-    if (iterator.IsCurrentSquareOccupied()) {
-      numberOfBishops++;
-      Square square = iterator.GetCurrentSquare();
-      Bitboard moved = (diagRightAttacks[getDiagRightBlockPattern(
-                            occupiedRot45Right, square)][square] |
-                        diagLeftAttacks[getDiagLeftBlockPattern(
-                            occupiedRot45Left, square)][square]) &
-                       validMoves;
-
-      int multiplier = squareToRank(square) > 5 ? 2 : 1;
-      moveCount += (std::popcount<uint32_t>(moved[TOP]) +
-                    std::popcount<uint32_t>(moved[MID])) *
-                       multiplier +
-                   std::popcount<uint32_t>(moved[BOTTOM]) * 2;
-    }
-  }
-  return moveCount;
+  Bitboard attacks;
+  bishopAttackBitboards(bishop, occupiedRot45Right, occupiedRot45Left,
+                        &attacks);
+  attacks &= validMoves;
+  int multiplier = squareToRank(bishop) > 5 ? 2 : 1;
+  return (std::popcount<uint32_t>(attacks[TOP]) +
+          std::popcount<uint32_t>(attacks[MID])) *
+             multiplier +
+         std::popcount<uint32_t>(attacks[BOTTOM]) * 2;
 }
 
-size_t countBlackBishopMoves(const Bitboard bishops,
+size_t countBlackBishopMoves(const Square bishop,
                              const Bitboard& validMoves,
                              const Bitboard& occupiedRot45Right,
                              const Bitboard& occupiedRot45Left) {
-  int moveCount = 0;
-  int numberOfBishops = 0;
-  BitboardIterator iterator(bishops);
-  while (numberOfBishops < 1 && iterator.Next()) {
-    if (iterator.IsCurrentSquareOccupied()) {
-      numberOfBishops++;
-      Square square = iterator.GetCurrentSquare();
-      Bitboard moved = (diagRightAttacks[getDiagRightBlockPattern(
-                            occupiedRot45Right, square)][square] |
-                        diagLeftAttacks[getDiagLeftBlockPattern(
-                            occupiedRot45Left, square)][square]) &
-                       validMoves;
-
-      int multiplier = squareToRank(square) < 3 ? 2 : 1;
-      moveCount += (std::popcount<uint32_t>(moved[BOTTOM]) +
-                    std::popcount<uint32_t>(moved[MID])) *
-                       multiplier +
-                   std::popcount<uint32_t>(moved[TOP]) * 2;
-    }
-  }
-  return moveCount;
+  Bitboard attacks;
+  bishopAttackBitboards(bishop, occupiedRot45Right, occupiedRot45Left,
+                        &attacks);
+  attacks &= validMoves;
+  int multiplier = squareToRank(bishop) < 3 ? 2 : 1;
+  return (std::popcount<uint32_t>(attacks[BOTTOM]) +
+          std::popcount<uint32_t>(attacks[MID])) *
+             multiplier +
+         std::popcount<uint32_t>(attacks[TOP]) * 2;
 }
 
-size_t countWhiteRookMoves(const Bitboard rooks,
+size_t countWhiteRookMoves(const Square rook,
                            const Bitboard& validMoves,
                            const Bitboard& occupied,
                            const Bitboard& occupiedRot90) {
-  int moveCount = 0;
-  int numberOfBishops = 0;
-  BitboardIterator iterator(rooks);
-  while (numberOfBishops < 1 && iterator.Next()) {
-    if (iterator.IsCurrentSquareOccupied()) {
-      numberOfBishops++;
-      Square square = iterator.GetCurrentSquare();
-      Bitboard moved =
-          (fileAttacks[getFileBlockPattern(occupiedRot90, square)][square] |
-           rankAttacks[getRankBlockPattern(occupied, square)][square]) &
-          validMoves;
-
-      int multiplier = squareToRank(square) > 5 ? 2 : 1;
-      moveCount += (std::popcount<uint32_t>(moved[TOP]) +
-                    std::popcount<uint32_t>(moved[MID])) *
-                       multiplier +
-                   std::popcount<uint32_t>(moved[BOTTOM]) * 2;
-    }
-  }
-  return moveCount;
+  Bitboard attacks;
+  rookAttackBitboards(rook, occupied, occupiedRot90, &attacks);
+  attacks &= validMoves;
+  int multiplier = squareToRank(rook) > 5 ? 2 : 1;
+  return (std::popcount<uint32_t>(attacks[TOP]) +
+          std::popcount<uint32_t>(attacks[MID])) *
+             multiplier +
+         std::popcount<uint32_t>(attacks[BOTTOM]) * 2;
 }
 
-size_t countBlackRookMoves(const Bitboard rooks,
+size_t countBlackRookMoves(const Square rook,
                            const Bitboard& validMoves,
                            const Bitboard& occupied,
                            const Bitboard& occupiedRot90) {
-  int moveCount = 0;
-  int numberOfBishops = 0;
-  BitboardIterator iterator(rooks);
-  while (numberOfBishops < 1 && iterator.Next()) {
-    if (iterator.IsCurrentSquareOccupied()) {
-      numberOfBishops++;
-      Square square = iterator.GetCurrentSquare();
-      Bitboard moved =
-          (fileAttacks[getFileBlockPattern(occupiedRot90, square)][square] |
-           rankAttacks[getRankBlockPattern(occupied, square)][square]) &
-          validMoves;
-
-      int multiplier = squareToRank(square) < 3 ? 2 : 1;
-      moveCount += (std::popcount<uint32_t>(moved[BOTTOM]) +
-                    std::popcount<uint32_t>(moved[MID])) *
-                       multiplier +
-                   std::popcount<uint32_t>(moved[TOP]) * 2;
-    }
-  }
-  return moveCount;
+  Bitboard attacks;
+  rookAttackBitboards(rook, occupied, occupiedRot90, &attacks);
+  attacks &= validMoves;
+  int multiplier = squareToRank(rook) < 3 ? 2 : 1;
+  return (std::popcount<uint32_t>(attacks[BOTTOM]) +
+          std::popcount<uint32_t>(attacks[MID])) *
+             multiplier +
+         std::popcount<uint32_t>(attacks[TOP]) * 2;
 }
 
-size_t countHorseMoves(const Bitboard horse,
+size_t countHorseMoves(const Square horse,
                        const Bitboard& validMoves,
                        const Bitboard& occupiedRot45Right,
                        const Bitboard& occupiedRot45Left) {
-  int moveCount = 0;
-  int numberOfBishops = 0;
-  BitboardIterator iterator(horse);
-  while (numberOfBishops < 1 && iterator.Next()) {
-    if (iterator.IsCurrentSquareOccupied()) {
-      numberOfBishops++;
-      Square square = iterator.GetCurrentSquare();
-      // Bishop-like moves
-      Bitboard moved =
-          (diagRightAttacks[getDiagRightBlockPattern(occupiedRot45Right,
-                                                     square)][square] |
-           diagLeftAttacks[getDiagLeftBlockPattern(occupiedRot45Left, square)]
-                          [square] |
-           moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
-          validMoves;
-
-      moveCount += std::popcount<uint32_t>(moved[TOP]) +
-                   std::popcount<uint32_t>(moved[MID]) +
-                   std::popcount<uint32_t>(moved[BOTTOM]);
-    }
-  }
-  return moveCount;
+  Bitboard attacks;
+  horseAttackBitboards(horse, occupiedRot45Right, occupiedRot45Left, &attacks);
+  attacks &= validMoves;
+  return std::popcount<uint32_t>(attacks[TOP]) +
+         std::popcount<uint32_t>(attacks[MID]) +
+         std::popcount<uint32_t>(attacks[BOTTOM]);
 }
 
-
-size_t countDragonMoves(const Bitboard dragon,
+size_t countDragonMoves(const Square dragon,
                         const Bitboard& validMoves,
                         const Bitboard& occupied,
                         const Bitboard& occupiedRot90) {
-  int moveCount = 0;
-  int numberOfBishops = 0;
-  BitboardIterator iterator(dragon);
-  while (numberOfBishops < 1 && iterator.Next()) {
-    if (iterator.IsCurrentSquareOccupied()) {
-      numberOfBishops++;
-      Square square = iterator.GetCurrentSquare();
-      // Bishop-like moves
-      Bitboard moved =
-          (fileAttacks[getFileBlockPattern(occupiedRot90, square)][square] |
-           rankAttacks[getRankBlockPattern(occupied, square)][square] |
-           moveNE(dragon) | moveNW(dragon) | moveSE(dragon) | moveSW(dragon)) &
-          validMoves;
-
-      moveCount += std::popcount<uint32_t>(moved[TOP]) +
-                   std::popcount<uint32_t>(moved[MID]) +
-                   std::popcount<uint32_t>(moved[BOTTOM]);
-    }
-  }
-  return moveCount;
+  Bitboard attacks;
+  dragonAttackBitboards(dragon, occupied, occupiedRot90, &attacks);
+  attacks &= validMoves;
+  return std::popcount<uint32_t>(attacks[TOP]) +
+         std::popcount<uint32_t>(attacks[MID]) +
+         std::popcount<uint32_t>(attacks[BOTTOM]);
 }
 
-size_t countDropMoves(const NumberOfPieces& inHand,
-    const Bitboard& freeSquares,
-    const Bitboard ownPawns,
-    const Bitboard enemyKing, bool isWhite) {
+size_t countDropMoves(const PlayerInHandPieces& inHand,
+                      const Bitboard& freeSquares,
+                      const Bitboard ownPawns,
+                      const Bitboard enemyKing,
+                      bool isWhite) {
   int moveCount = 0;
   Bitboard legalDropSpots = freeSquares;
-    // Pawns
+  // Pawns
   if (inHand.Pawn > 0) {
     // Cannot drop on last rank
     legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
@@ -857,8 +906,3 @@ size_t countDropMoves(const NumberOfPieces& inHand,
                           std::popcount<uint32_t>(legalDropSpots[BOTTOM]));
   return moveCount;
 }
-
-size_t countBlackDropMoves(const InHand& inHand,
-                           const Bitboard& freeSquares,
-                           const Bitboard blackPawns,
-                           const Bitboard whiteKing);

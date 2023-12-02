@@ -10,6 +10,7 @@ enum Square : int32_t {
 	H9, H8, H7, H6, H5, H4, H3, H2, H1, //
 	I9, I8, I7, I6, I5, I4, I3, I2, I1, //
 	SQUARE_SIZE,
+	NONE,
 	UP = -9,
 	UP_RIGHT = -8,
 	RIGHT = 1,

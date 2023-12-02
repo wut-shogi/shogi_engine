@@ -14,10 +14,6 @@ enum Type {
   KNIGHT,
   SILVER_GENERAL,
   GOLD_GENERAL,
-  KING,
-  LANCE,
-  BISHOP,
-  ROOK,
 
   PROMOTED,
 
@@ -50,7 +46,7 @@ inline Region squareToRegion(Square square) {
   return (Region)(square / REGION_SIZE);
 }
 
-struct NumberOfPieces {
+struct PlayerInHandPieces {
   uint16_t Pawn : 4;
   uint16_t Lance : 2;
   uint16_t Knight : 2;
@@ -60,12 +56,26 @@ struct NumberOfPieces {
   uint16_t Rook : 1;
 };
 
-union InHand {
-  InHand() { value = 0; }
+struct PlayerNonBitboardPieces {
+  uint64_t King : 7;
+  uint64_t Lance1 : 7;
+  uint64_t Lance2 : 7;
+  uint64_t Bishop : 7;
+  uint64_t Rook : 7;
+  uint64_t Horse : 7;
+  uint64_t Dragon : 7;
+};
+
+struct NonBitboardPieces {
+  PlayerNonBitboardPieces White;
+  PlayerNonBitboardPieces Black;
+};
+
+union InHandPieces {
   uint32_t value;
   struct {
-    NumberOfPieces White;
-    NumberOfPieces Black;
+    PlayerInHandPieces White;
+    PlayerInHandPieces Black;
   };
 };
 
@@ -93,6 +103,11 @@ struct Bitboard {
           bb[bbIdx] = bb[bbIdx] << 1;
       }
     }
+  }
+
+  explicit Bitboard(const Square square) : bb{0, 0, 0} {
+    Region region = squareToRegion(square);
+    bb[region] = 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
   }
 
   uint32_t& operator[](Region region) { return bb[region]; }
@@ -127,7 +142,7 @@ struct Bitboard {
     return bb[region] & (1 << shift);
   }
 
-  int numberOfPieces() const{
+  int numberOfPieces() const {
     return std::popcount<uint32_t>(bb[TOP]) + std::popcount<uint32_t>(bb[MID]) +
            std::popcount<uint32_t>(bb[BOTTOM]);
   }
@@ -289,6 +304,9 @@ inline bool empty(const Bitboard& bb) {
   return bb[TOP] || bb[MID] || bb[BOTTOM];
 }
 
+// TO avoid heavy operations inside if iterator should return array containing
+// only occupied pieces Current idea pack all occupied pieces inside 64 bits.
+// One should be enough for most cases but to be safe we need 2.
 struct BitboardIterator {
  private:
   Bitboard bitboard;
