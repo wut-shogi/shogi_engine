@@ -29,3 +29,7 @@ inline int squareToRank(Square square) {
 inline int squareToFile(Square square) {
   return square % BOARD_DIM;
 }
+
+inline Square rankFileToSquare(uint32_t rank, uint32_t file) {
+  return static_cast<Square>(rank * BOARD_DIM + file);
+}

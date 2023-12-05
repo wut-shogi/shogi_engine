@@ -14,6 +14,10 @@ enum Type {
   KNIGHT,
   SILVER_GENERAL,
   GOLD_GENERAL,
+  KING,
+  LANCE,
+  BISHOP,
+  ROOK,
 
   PROMOTED,
 
@@ -54,21 +58,6 @@ struct PlayerInHandPieces {
   uint16_t GoldGeneral : 2;
   uint16_t Bishop : 1;
   uint16_t Rook : 1;
-};
-
-struct PlayerNonBitboardPieces {
-  uint64_t King : 7;
-  uint64_t Lance1 : 7;
-  uint64_t Lance2 : 7;
-  uint64_t Bishop : 7;
-  uint64_t Rook : 7;
-  uint64_t Horse : 7;
-  uint64_t Dragon : 7;
-};
-
-struct NonBitboardPieces {
-  PlayerNonBitboardPieces White;
-  PlayerNonBitboardPieces Black;
 };
 
 union InHandPieces {
@@ -304,48 +293,57 @@ inline bool empty(const Bitboard& bb) {
   return bb[TOP] || bb[MID] || bb[BOTTOM];
 }
 
-// TO avoid heavy operations inside if iterator should return array containing
-// only occupied pieces Current idea pack all occupied pieces inside 64 bits.
-// One should be enough for most cases but to be safe we need 2.
+inline void setSquare(Bitboard& bb, const Square square) {
+  Region regionIdx = squareToRegion(square);
+  bb[regionIdx] &= 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
+}
+
+static const int MultiplyDeBruijnBitPosition[32] = {
+    0,  1,  28, 2,  29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4,  8,
+    31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6,  11, 5,  10, 9};
+
+inline int ffs_host(uint32_t value) {
+  if (value == 0) {
+    return -1;  // Handle the case where value is zero
+  }
+
+  // Use a lookup table to find the index of the least significant set bit
+  return MultiplyDeBruijnBitPosition[((uint32_t)((value & -value) *
+                                                 0x077CB531U)) >>
+                                     27];
+}
 struct BitboardIterator {
  private:
   Bitboard bitboard;
-  int currentSquare;
+  uint32_t bitPos;
   bool occupied;
+  Region currentRegion = TOP;
+  uint32_t squareOffset;
 
  public:
+  BitboardIterator(){};
   BitboardIterator(const Bitboard& bb) {
     bitboard = bb;
-    currentSquare = 27;
+    currentRegion = bb[TOP] != 0 ? TOP : bb[MID] != 0 ? MID : BOTTOM;
+    squareOffset = currentRegion * REGION_SIZE + 26;
     occupied = false;
   }
   bool Next() {
-    if (bitboard[TOP] != 0) {
-      currentSquare--;
-      occupied = bitboard[TOP] & 1;
-      bitboard[TOP] = bitboard[TOP] >> 1;
-    } else if (bitboard[MID] != 0) {
-      currentSquare--;
-      if (currentSquare < 27) {
-        currentSquare = 53;
-      }
-      occupied = bitboard[MID] & 1;
-      bitboard[MID] = bitboard[MID] >> 1;
-    } else {
-      currentSquare--;
-      if (currentSquare < 54) {
-        currentSquare = 80;
-      }
-      occupied = bitboard[BOTTOM] & 1;
-      bitboard[BOTTOM] = bitboard[BOTTOM] >> 1;
-      if (bitboard[BOTTOM] == 0) {
-        return false | occupied;
-      }
+    bitPos = ffs_host(bitboard[currentRegion]);
+    if (bitPos != -1) {
+      bitboard[currentRegion] &= ~(1 << bitPos);
+      return true;
     }
-    return true;
+    if(currentRegion != BOTTOM) {
+      currentRegion = static_cast<Region>(currentRegion + 1);
+      squareOffset += 27;
+      return currentRegion == MID ? currentRegion & bitboard[BOTTOM] != 0
+                                  : bitboard[BOTTOM] != 0;
+    }
+    return false;
   }
 
-  Square GetCurrentSquare() { return static_cast<Square>(currentSquare); }
+  Square GetCurrentSquare() { return static_cast<Square>(squareOffset - bitPos); }
 
   bool IsCurrentSquareOccupied() { return occupied; };
 };

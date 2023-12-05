@@ -1,5 +1,15 @@
 #include "MoveGen.h"
 
+//Bitboard findLegalMoves(const Board& board, bool isWhite) {
+//  Bitboard enemyKing;
+//  Bitboard nonSlidingCheckingPieces;
+//  Bitboard pieces = board.bbs[BB::Type::PAWN] & board.bbs[BB::Type::ALL_WHITE];
+//  nonSlidingCheckingPieces =
+//      whitePawnsChecks(enemyKing, pieces);
+//  pieces = board.bbs[BB::Type::PAWN] & board.bbs[BB::Type::ALL_WHITE];
+//  
+//}
+
 size_t countAllMoves(const Board& board, bool isWhite) {
   Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
   Bitboard occupiedRot90 = board[BB::Type::OCCUPIED_ROT90];
@@ -7,6 +17,7 @@ size_t countAllMoves(const Board& board, bool isWhite) {
   Bitboard occupiedRot45Left = board[BB::Type::OCCUPIED_ROTL45];
   Bitboard promoted = board[BB::Type::PROMOTED];
   Bitboard notPromoted = ~promoted;
+  BitboardIterator iterator;
 
   int moveCount = 0;
   if (isWhite) {
@@ -22,36 +33,47 @@ size_t countAllMoves(const Board& board, bool isWhite) {
         board[BB::Type::SILVER_GENERAL] & playerMask & notPromoted, validMoves);
     std::cout << "After silverGen: " << moveCount << std::endl;
     moveCount += countWhiteGoldGeneralsMoves(
-        (board[BB::Type::GOLD_GENERAL] | (board[BB::Type::PAWN] |
-         board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL] |
-         Bitboard(static_cast<Square>(board.nonBitboardPieces.White.Lance1)) |
-         Bitboard(static_cast<Square>(board.nonBitboardPieces.White.Lance2))) &
-            promoted) & playerMask,
+        (board[BB::Type::GOLD_GENERAL] |
+         (board[BB::Type::PAWN] | board[BB::Type::KNIGHT] |
+          board[BB::Type::SILVER_GENERAL] | board[BB::Type::LANCE]) &
+             promoted) &
+            playerMask,
         validMoves);
     std::cout << "After goldGen: " << moveCount << std::endl;
-    moveCount += countKingMoves(
-        static_cast<Square>(board.nonBitboardPieces.White.King), validMoves);
+    moveCount += countKingMoves(board[BB::Type::KING] & playerMask, validMoves);
     std::cout << "After king: " << moveCount << std::endl;
-    moveCount += countWhiteLancesMoves(
-        static_cast<Square>(board.nonBitboardPieces.White.Lance1),
-        static_cast<Square>(board.nonBitboardPieces.White.Lance2), validMoves,
-        occupiedRot90);
+    iterator = BitboardIterator(board[BB::Type::LANCE] & playerMask & notPromoted);
+    while (iterator.Next()) {
+      moveCount += countWhiteLancesMoves(iterator.GetCurrentSquare(), validMoves,
+                                occupiedRot90);
+    }
     std::cout << "After lance: " << moveCount << std::endl;
-    moveCount += countWhiteBishopMoves(
-        static_cast<Square>(board.nonBitboardPieces.White.Bishop), validMoves,
-        occupiedRot45Right, occupiedRot45Left);
+    iterator = BitboardIterator(board[BB::Type::BISHOP] & playerMask & notPromoted);
+    while (iterator.Next()) {
+      moveCount +=
+          countWhiteBishopMoves(iterator.GetCurrentSquare(), validMoves,
+                                occupiedRot45Right, occupiedRot45Left);
+    }
     std::cout << "After bishop: " << moveCount << std::endl;
-    moveCount += countWhiteRookMoves(
-        static_cast<Square>(board.nonBitboardPieces.White.Rook), validMoves,
-        occupied, occupiedRot90);
+    iterator = BitboardIterator(board[BB::Type::ROOK] & playerMask & notPromoted);
+    while (iterator.Next()) {
+      moveCount += countWhiteRookMoves(iterator.GetCurrentSquare(), validMoves,
+                                       occupied, occupiedRot90);
+    }
     std::cout << "After rook: " << moveCount << std::endl;
-    moveCount += countHorseMoves(
-        static_cast<Square>(board.nonBitboardPieces.White.Horse), validMoves,
-        occupiedRot45Right, occupiedRot45Left);
+    iterator =
+        BitboardIterator(board[BB::Type::BISHOP] & playerMask & promoted);
+    while (iterator.Next()) {
+      moveCount += countHorseMoves(iterator.GetCurrentSquare(), validMoves,
+                                   occupiedRot45Right, occupiedRot45Left);
+    }
     std::cout << "After horse: " << moveCount << std::endl;
-    moveCount += countDragonMoves(
-        static_cast<Square>(board.nonBitboardPieces.White.Dragon), validMoves,
-        occupied, occupiedRot90);
+    iterator =
+        BitboardIterator(board[BB::Type::ROOK] & playerMask & promoted);
+    while (iterator.Next()) {
+      moveCount += countDragonMoves(iterator.GetCurrentSquare(), validMoves,
+                                    occupied, occupiedRot90);
+    }
     std::cout << "After dragon: " << moveCount << std::endl;
     moveCount += countDropMoves(board.inHandPieces.White, ~occupied,
                                 board[BB::Type::PAWN] & playerMask,
@@ -70,36 +92,49 @@ size_t countAllMoves(const Board& board, bool isWhite) {
         board[BB::Type::SILVER_GENERAL] & playerMask & notPromoted, validMoves);
     std::cout << "After silverGen: " << moveCount << std::endl;
     moveCount += countBlackGoldGeneralsMoves(
-        (board[BB::Type::GOLD_GENERAL] | (board[BB::Type::PAWN] |
-         board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL] |
-         Bitboard(static_cast<Square>(board.nonBitboardPieces.Black.Lance1)) |
-         Bitboard(static_cast<Square>(board.nonBitboardPieces.Black.Lance2))) &
-            promoted) & playerMask,
+        (board[BB::Type::GOLD_GENERAL] |
+         (board[BB::Type::PAWN] | board[BB::Type::KNIGHT] |
+          board[BB::Type::SILVER_GENERAL] | board[BB::Type::LANCE]) &
+             promoted) &
+            playerMask,
         validMoves);
     std::cout << "After goldGen: " << moveCount << std::endl;
-    moveCount += countKingMoves(
-        static_cast<Square>(board.nonBitboardPieces.Black.King), validMoves);
+    moveCount += countKingMoves(board[BB::Type::KING] & playerMask, validMoves);
     std::cout << "After king: " << moveCount << std::endl;
-    moveCount += countBlackLancesMoves(
-        static_cast<Square>(board.nonBitboardPieces.Black.Lance1),
-        static_cast<Square>(board.nonBitboardPieces.Black.Lance2), validMoves,
-        occupiedRot90);
+    iterator =
+        BitboardIterator(board[BB::Type::LANCE] & playerMask & notPromoted);
+    while (iterator.Next()) {
+      moveCount += countBlackLancesMoves(iterator.GetCurrentSquare(),
+                                         validMoves, occupiedRot90);
+    }
     std::cout << "After lance: " << moveCount << std::endl;
-    moveCount += countBlackBishopMoves(
-        static_cast<Square>(board.nonBitboardPieces.Black.Bishop), validMoves,
-        occupiedRot45Right, occupiedRot45Left);
+    iterator =
+        BitboardIterator(board[BB::Type::BISHOP] & playerMask & notPromoted);
+    while (iterator.Next()) {
+      moveCount +=
+          countBlackBishopMoves(iterator.GetCurrentSquare(), validMoves,
+                                occupiedRot45Right, occupiedRot45Left);
+    }
     std::cout << "After bishop: " << moveCount << std::endl;
-    moveCount += countBlackRookMoves(
-        static_cast<Square>(board.nonBitboardPieces.Black.Rook), validMoves,
-        occupied, occupiedRot90);
+    iterator =
+        BitboardIterator(board[BB::Type::ROOK] & playerMask & notPromoted);
+    while (iterator.Next()) {
+      moveCount += countBlackRookMoves(iterator.GetCurrentSquare(), validMoves,
+                                       occupied, occupiedRot90);
+    }
     std::cout << "After rook: " << moveCount << std::endl;
-    moveCount += countHorseMoves(
-        static_cast<Square>(board.nonBitboardPieces.Black.Horse), validMoves,
-        occupiedRot45Right, occupiedRot45Left);
+    iterator =
+        BitboardIterator(board[BB::Type::BISHOP] & playerMask & promoted);
+    while (iterator.Next()) {
+      moveCount += countHorseMoves(iterator.GetCurrentSquare(), validMoves,
+                                   occupiedRot45Right, occupiedRot45Left);
+    }
     std::cout << "After horse: " << moveCount << std::endl;
-    moveCount += countDragonMoves(
-        static_cast<Square>(board.nonBitboardPieces.Black.Dragon), validMoves,
-        occupied, occupiedRot90);
+    iterator = BitboardIterator(board[BB::Type::ROOK] & playerMask & promoted);
+    while (iterator.Next()) {
+      moveCount += countDragonMoves(iterator.GetCurrentSquare(), validMoves,
+                                    occupied, occupiedRot90);
+    }
     std::cout << "After dragon: " << moveCount << std::endl;
     moveCount += countDropMoves(board.inHandPieces.Black, ~occupied,
                                 board[BB::Type::PAWN] & playerMask,
@@ -108,4 +143,13 @@ size_t countAllMoves(const Board& board, bool isWhite) {
   }
 
   return moveCount;
+}
+
+
+std::vector<std::pair<int, int>> getLegalMovesFromSquare(std::string SFENstring,
+    int rank,
+    int file) {
+  std::vector<std::pair<int, int>> result;
+  //Board board = Board::FromSFEN(SFENstring);
+  return result;
 }

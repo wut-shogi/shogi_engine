@@ -27,7 +27,7 @@ void whiteGoldGeneralsAttackBitboards(const Bitboard goldGenerals,
                                       Bitboard* outAttacksBitboards);
 void blackGoldGeneralsAttackBitboards(const Bitboard goldGenerals,
                                       Bitboard* outAttacksBitboards);
-void kingAttackBitboards(const Square king, Bitboard* outAttacksBitboards);
+void kingAttackBitboards(const Bitboard king, Bitboard* outAttacksBitboards);
 void whiteLanceAttackBitboards(const Square lance,
                                const Bitboard& occupiedRot90,
                                Bitboard* outAttacksBitboards);
@@ -50,7 +50,21 @@ void dragonAttackBitboards(const Square dragon,
                              const Bitboard& occupied,
                                const Bitboard& occupiedRot90,
                                Bitboard* outAttacksBitboards);
-//// Move count
+
+// King threat Bitboards
+Bitboard whitePawnsChecks(const Bitboard& king, const Bitboard& pawns);
+Bitboard whiteKnightsChecks(const Bitboard& king, const Bitboard& knights);
+Bitboard whiteSilverGeneralsChecks(const Bitboard& king,
+                                   const Bitboard& silverGenerals);
+Bitboard whiteGoldGeneralsChecks(const Bitboard& king,
+                                   const Bitboard& goldGenerals);
+Bitboard blackPawnsChecks(const Bitboard& king, const Bitboard& pawns);
+Bitboard blackKnightsChecks(const Bitboard& king, const Bitboard& knights);
+Bitboard blackSilverGeneralsChecks(const Bitboard& king,
+                                   const Bitboard& silverGenerals);
+Bitboard blackGoldGeneralsChecks(const Bitboard& king,
+                                 const Bitboard& goldGenerals);
+    //// Move count
 size_t countWhitePawnsMoves(const Bitboard pawns, const Bitboard& validMoves);
 size_t countBlackPawnsMoves(const Bitboard pawns, const Bitboard& validMoves);
 size_t countWhiteKnightsMoves(const Bitboard knights,
@@ -65,12 +79,11 @@ size_t countWhiteGoldGeneralsMoves(const Bitboard goldGenerals,
                                   const Bitboard& validMoves);
 size_t countBlackGoldGeneralsMoves(const Bitboard goldGenerals,
                                   const Bitboard& validMoves);
-size_t countKingMoves(const Square king, const Bitboard& validMoves);
-size_t countWhiteLancesMoves(const Square lance1, const Square lance2,
+size_t countKingMoves(const Bitboard king, const Bitboard& validMoves);
+size_t countWhiteLancesMoves(const Square lance,
                             const Bitboard& validMoves,
                             const Bitboard& occupiedRot90);
-size_t countBlackLancesMoves(const Square lance1,
-                            const Square lance2,
+size_t countBlackLancesMoves(const Square lance,
                             const Bitboard& validMoves,
                             const Bitboard& occupiedRot90);
 size_t countWhiteBishopMoves(const Square bishop,

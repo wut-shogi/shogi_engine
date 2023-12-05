@@ -20,8 +20,19 @@ set(sourceFiles
     engine/MoveGenHelpers.cpp
 )
 
+set(dllFiles
+    include/shogi_engine.h
+    engine/shogi_engine.cpp
+)
+
 add_library(shogi_engine STATIC
     ${cudaFiles} ${headerFiles} ${sourceFiles}
 )
 
+add_library(shogi_engine_lib SHARED 
+    ${cudaFiles} ${headerFiles} ${sourceFiles} ${dllFiles}
+)
+
 target_include_directories(shogi_engine PUBLIC ../include)
+
+target_include_directories(shogi_engine_lib PUBLIC include)

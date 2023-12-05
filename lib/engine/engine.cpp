@@ -11,6 +11,9 @@ void test2() {
 
 void test() {
   std::cout << "Test!\n";
+  std::cout << "ffs_host: " << ffs_host(0) << std::endl;
+  std::cout << "ffs_host: " << ffs_host(1) << std::endl;
+  std::cout << "ffs_host: " << ffs_host(8) << std::endl;
   Board startingBoard = Boards::STARTING_BOARD();
   Bitboard all =
       startingBoard[BB::Type::ALL_WHITE] | startingBoard[BB::Type::ALL_BLACK];
