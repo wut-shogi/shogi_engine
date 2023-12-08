@@ -50,6 +50,10 @@ inline Region squareToRegion(Square square) {
   return (Region)(square / REGION_SIZE);
 }
 
+inline uint32_t isBitSet(uint32_t region, int bit) {
+  return (region & (1 << bit)) >> bit;
+}
+
 struct PlayerInHandPieces {
   uint16_t Pawn : 4;
   uint16_t Lance : 2;
@@ -66,6 +70,7 @@ union InHandPieces {
     PlayerInHandPieces White;
     PlayerInHandPieces Black;
   };
+  InHandPieces() { value = 0; }
 };
 
 struct Bitboard {
@@ -128,7 +133,7 @@ struct Bitboard {
   bool GetBit(Square square) const {
     Region region = squareToRegion(square);
     int shift = REGION_SIZE - 1 - square % REGION_SIZE;
-    return bb[region] & (1 << shift);
+    return (bb[region] & (1 << shift)) != 0;
   }
 
   int numberOfPieces() const {
@@ -209,8 +214,6 @@ inline Square Rotate90AntiClockwise(Square square) {
 
   return static_cast<Square>(rot90Mapping[square]);
 }
-
-// Rot45 nie jest odwracalneeeee whyyyyyyy
 
 inline Square Rotate45Clockwise(Square square) {
   static const uint32_t rot45Mapping[BOARD_SIZE] = {
@@ -295,7 +298,7 @@ inline bool empty(const Bitboard& bb) {
 
 inline void setSquare(Bitboard& bb, const Square square) {
   Region regionIdx = squareToRegion(square);
-  bb[regionIdx] &= 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
+  bb[regionIdx] |= 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
 }
 
 static const int MultiplyDeBruijnBitPosition[32] = {
@@ -303,9 +306,9 @@ static const int MultiplyDeBruijnBitPosition[32] = {
     31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6,  11, 5,  10, 9};
 
 inline int ffs_host(uint32_t value) {
-  if (value == 0) {
-    return -1;  // Handle the case where value is zero
-  }
+  // if (value == 0) {
+  //   return -1;  // Handle the case where value is zero
+  // }
 
   // Use a lookup table to find the index of the least significant set bit
   return MultiplyDeBruijnBitPosition[((uint32_t)((value & -value) *
@@ -315,35 +318,35 @@ inline int ffs_host(uint32_t value) {
 struct BitboardIterator {
  private:
   Bitboard bitboard;
-  uint32_t bitPos;
+  int bitPos;
   bool occupied;
   Region currentRegion = TOP;
   uint32_t squareOffset;
 
  public:
-  BitboardIterator(){};
-  BitboardIterator(const Bitboard& bb) {
+  void Init(const Bitboard& bb) {
     bitboard = bb;
-    currentRegion = bb[TOP] != 0 ? TOP : bb[MID] != 0 ? MID : BOTTOM;
-    squareOffset = currentRegion * REGION_SIZE + 26;
+    currentRegion = TOP;
+    squareOffset = 26;
     occupied = false;
   }
   bool Next() {
+    while (bitboard[currentRegion] == 0) {
+      if (currentRegion != BOTTOM) {
+        currentRegion = static_cast<Region>(currentRegion + 1);
+        squareOffset += REGION_SIZE;
+      } else {
+        return false;
+      }
+    }
     bitPos = ffs_host(bitboard[currentRegion]);
-    if (bitPos != -1) {
-      bitboard[currentRegion] &= ~(1 << bitPos);
-      return true;
-    }
-    if(currentRegion != BOTTOM) {
-      currentRegion = static_cast<Region>(currentRegion + 1);
-      squareOffset += 27;
-      return currentRegion == MID ? currentRegion & bitboard[BOTTOM] != 0
-                                  : bitboard[BOTTOM] != 0;
-    }
-    return false;
+    bitboard[currentRegion] &= ~(1 << bitPos);
+    return true;
   }
 
-  Square GetCurrentSquare() { return static_cast<Square>(squareOffset - bitPos); }
+  Square GetCurrentSquare() {
+    return static_cast<Square>(squareOffset - bitPos);
+  }
 
   bool IsCurrentSquareOccupied() { return occupied; };
 };

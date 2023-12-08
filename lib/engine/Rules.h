@@ -10,6 +10,11 @@
 #define MID_RANK 261632
 #define BOTTOM_RANK 511
 
+#define MAX_MOVES_COUNT 20
+
+#define PROMOTION_AVALIABLE_MASK 128
+#define DESTINATION_SQUARE_MASK 127
+
 namespace Player {
 enum Type { NONE, WHITE, BLACK };
 }

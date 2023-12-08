@@ -11,14 +11,24 @@ void test2() {
 
 void test() {
   std::cout << "Test!\n";
-  std::cout << "ffs_host: " << ffs_host(0) << std::endl;
-  std::cout << "ffs_host: " << ffs_host(1) << std::endl;
-  std::cout << "ffs_host: " << ffs_host(8) << std::endl;
+
   Board startingBoard = Boards::STARTING_BOARD();
-  Bitboard all =
-      startingBoard[BB::Type::ALL_WHITE] | startingBoard[BB::Type::ALL_BLACK];
-  std::cout << "Move count white: " << countAllMoves(startingBoard, true) << std::endl;
+  bool isWhite;
+  Board board = Board::FromSFEN(
+      "lnsgkgsn1/9/pppp1pppp/4p2+B1/B1R1L3b/4l1r2/PPPPPP1PP/9/1NSGKGSNL b", isWhite);
+  auto moves = getAllLegalMoves(board, isWhite);
+  std::cout << "Done" << std::endl;
+  /*std::cout << "Move count white: " << countAllMoves(startingBoard, true) << std::endl;
   std::cout << "Move count black: " << countAllMoves(startingBoard, false) << std::endl;
+  Board board = Board::FromSFEN(
+      "lnsgkgsn1/9/pppp1pppp/4p2+B1/B1R1L3b/4l1r2/PPPPPPPPP/9/1NSGKGSNL b 1");
+  print_Board(board);
+  std::cout << std::endl;
+  Bitboard pinned = getWhitePinnedPieces(board);
+  print_BB(pinned);
+  std::cout << std::endl;
+  pinned = getBlackPinnedPieces(board);
+  print_BB(pinned);*/
 }
 
 
