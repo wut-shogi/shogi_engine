@@ -1,5 +1,7 @@
 #include "Bitboard.h"
 
+namespace shogi {
+namespace engine {
 Bitboard Bitboards::FULL() {
   static Bitboard bb = {FULL_REGION, FULL_REGION, FULL_REGION};
   return bb;
@@ -162,3 +164,5 @@ Bitboard Bitboards::STARTING_ALL_BLACK() {
   }};
   return bb;
 }
+}  // namespace engine
+}  // namespace shogi

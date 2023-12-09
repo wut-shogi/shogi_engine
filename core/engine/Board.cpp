@@ -1,6 +1,8 @@
 #include "Board.h"
 #include <vector>
 
+namespace shogi {
+namespace engine {
 Board Boards::STARTING_BOARD() {
   InHandPieces inHandPieces;
   inHandPieces.value = 0;
@@ -15,13 +17,7 @@ Board Boards::STARTING_BOARD() {
                         Bitboards::STARTING_ROOK(),
                         Bitboards::STARTING_PROMOTED(),
                         Bitboards::STARTING_ALL_WHITE(),
-                        Bitboards::STARTING_ALL_BLACK(),
-                        Rotate90Clockwise(Bitboards::STARTING_ALL_WHITE() |
-                                          Bitboards::STARTING_ALL_BLACK()),
-                        Rotate45Clockwise(Bitboards::STARTING_ALL_WHITE() |
-                                          Bitboards::STARTING_ALL_BLACK()),
-                        Rotate45AntiClockwise(Bitboards::STARTING_ALL_WHITE() |
-                                              Bitboards::STARTING_ALL_BLACK()),
+                        Bitboards::STARTING_ALL_BLACK()
                     },
                     inHandPieces};
   return b;
@@ -64,8 +60,7 @@ std::vector<std::string> boardToStringVector(const Board& board) {
     boardRepresentation[iterator.GetCurrentSquare()] = "+n";
   }
   // Silver Generals
-  iterator.Init(board[BB::Type::SILVER_GENERAL] & playerMask &
-                              notPromoted);
+  iterator.Init(board[BB::Type::SILVER_GENERAL] & playerMask & notPromoted);
   while (iterator.Next()) {
     boardRepresentation[iterator.GetCurrentSquare()] = "s";
   }
@@ -74,8 +69,7 @@ std::vector<std::string> boardToStringVector(const Board& board) {
     boardRepresentation[iterator.GetCurrentSquare()] = "+s";
   }
   // Gold Generals
-  iterator.Init(board[BB::Type::GOLD_GENERAL] & playerMask &
-                              notPromoted);
+  iterator.Init(board[BB::Type::GOLD_GENERAL] & playerMask & notPromoted);
   while (iterator.Next()) {
     boardRepresentation[iterator.GetCurrentSquare()] = "g";
   }
@@ -133,8 +127,7 @@ std::vector<std::string> boardToStringVector(const Board& board) {
     boardRepresentation[iterator.GetCurrentSquare()] = "+N";
   }
   // Silver Generals
-  iterator.Init(board[BB::Type::SILVER_GENERAL] & playerMask &
-                              notPromoted);
+  iterator.Init(board[BB::Type::SILVER_GENERAL] & playerMask & notPromoted);
   while (iterator.Next()) {
     boardRepresentation[iterator.GetCurrentSquare()] = "S";
   }
@@ -143,8 +136,7 @@ std::vector<std::string> boardToStringVector(const Board& board) {
     boardRepresentation[iterator.GetCurrentSquare()] = "+S";
   }
   // Gold Generals
-  iterator.Init(board[BB::Type::GOLD_GENERAL] & playerMask &
-                              notPromoted);
+  iterator.Init(board[BB::Type::GOLD_GENERAL] & playerMask & notPromoted);
   while (iterator.Next()) {
     boardRepresentation[iterator.GetCurrentSquare()] = "G";
   }
@@ -207,21 +199,23 @@ std::string boardToSFEN(const Board& board) {
   for (int i = 0; i < BOARD_SIZE; i++) {
     if (boardRepresentation[i].empty()) {
       number++;
-    } 
-    else {
+    } else {
       if (number > 0) {
         result += std::to_string(number);
         number = 0;
       }
       result += boardRepresentation[i];
     }
-    if ((i+1) % BOARD_DIM == 0) {
+    if ((i + 1) % BOARD_DIM == 0) {
       if (number > 0) {
         result += std::to_string(number);
         number = 0;
       }
-      if(i != BOARD_SIZE -1) result += "/";
-    } 
+      if (i != BOARD_SIZE - 1)
+        result += "/";
+    }
   }
   return result;
 }
+}  // namespace engine
+}  // namespace shogi

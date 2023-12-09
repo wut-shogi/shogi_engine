@@ -1,6 +1,8 @@
 #include "MoveGenHelpers.h"
 #include <algorithm>
 
+namespace shogi {
+namespace engine {
 /// Static arrays initialization
 // Attack bitboards
 std::array<std::array<Bitboard, BOARD_SIZE>, 128> initRankAttacks();
@@ -324,11 +326,11 @@ const Bitboard& getFileAttacks(const Square& square, const Bitboard& occupied) {
   return fileAttacks[getFileBlockPattern(occupied, square)][square];
 }
 const Bitboard& getDiagRightAttacks(const Square& square,
-    const Bitboard& occupied) {
+                                    const Bitboard& occupied) {
   return diagRightAttacks[getDiagRightBlockPattern(occupied, square)][square];
 }
 const Bitboard& getDiagLeftAttacks(const Square& square,
-    const Bitboard& occupied) {
+                                   const Bitboard& occupied) {
   return diagLeftAttacks[getDiagLeftBlockPattern(occupied, square)][square];
 }
 const Bitboard& getRankMask(const uint32_t& rank) {
@@ -337,7 +339,6 @@ const Bitboard& getRankMask(const uint32_t& rank) {
 const Bitboard& getFileMask(const uint32_t& file) {
   return fileMask[file];
 }
-
 
 Bitboard moveN(Bitboard bb) {
   Bitboard out;
@@ -424,39 +425,9 @@ Bitboard moveNW(Bitboard bb) {
   return out;
 }
 
-size_t countDropMoves(const PlayerInHandPieces& inHand,
-                      const Bitboard& freeSquares,
-                      const Bitboard ownPawns,
-                      const Bitboard enemyKing,
-                      bool isWhite) {
-  int moveCount = 0;
-  Bitboard legalDropSpots = freeSquares;
-  // Pawns
-  if (inHand.Pawn > 0) {
-    // Cannot drop on last rank
-    legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
-    // Cannot drop to give checkmate
-    legalDropSpots &= ~(isWhite ? moveN(enemyKing) : moveS(enemyKing));
-    // Cannot drop on file with other pawn
-    Bitboard validFiles;
-    for (int fileIdx = 0; fileIdx < BOARD_DIM; fileIdx++) {
-      Bitboard file = fileAttacks[0][(Square)fileIdx];
-      if (empty(file & ownPawns)) {
-        validFiles |= file;
-      }
-    }
-    legalDropSpots &= validFiles;
-    moveCount += std::popcount<uint32_t>(legalDropSpots[TOP]) +
-                 std::popcount<uint32_t>(legalDropSpots[MID]) +
-                 std::popcount<uint32_t>(legalDropSpots[BOTTOM]);
-  }
-
-  int otherPiecesCount = (inHand.Knight > 0) + (inHand.Lance > 0) +
-                         (inHand.SilverGeneral > 0) + (inHand.GoldGeneral > 0) +
-                         (inHand.Bishop > 0) + (inHand.Rook > 0);
-  moveCount +=
-      otherPiecesCount * (std::popcount<uint32_t>(legalDropSpots[TOP]) +
-                          std::popcount<uint32_t>(legalDropSpots[MID]) +
-                          std::popcount<uint32_t>(legalDropSpots[BOTTOM]));
-  return moveCount;
+Bitboard getFullFile(int fileIdx) {
+  uint32_t region = FIRST_FILE >> fileIdx;
+  return Bitboard(region, region, region);
 }
+}  // namespace engine
+}  // namespace shogi

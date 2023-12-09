@@ -1,3 +1,5 @@
+#pragma once
+
 namespace shogi {
 namespace engine {
 void test();

@@ -1,4 +1,7 @@
 #pragma once
+
+namespace shogi {
+namespace engine {
 #define BOARD_DIM 9
 #define BOARD_SIZE 81
 #define NOT_RIGHT_FILE 133955070
@@ -9,6 +12,8 @@
 #define TOP_RANK 133955584
 #define MID_RANK 261632
 #define BOTTOM_RANK 511
+
+#define FIRST_FILE 67240192
 
 #define MAX_MOVES_COUNT 20
 
@@ -37,3 +42,5 @@ enum Type {
   DRAGON
 };
 }
+}  // namespace engine
+}  // namespace shogi

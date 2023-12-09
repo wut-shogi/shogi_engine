@@ -1,5 +1,6 @@
 #include "Board.h"
-
+namespace shogi {
+namespace engine {
 class BoardVisualizator {
  public:
   static void Show(const Board& position) {
@@ -8,13 +9,15 @@ class BoardVisualizator {
          player++) {
       for (int piece = Piece::Type::PAWN; piece <= Piece::Type::DRAGON;
            piece++) {
-        Bitboard pieces = GetPiecesDynamic(static_cast<Piece::Type>(piece), static_cast<Player::Type>(player), position);
+        Bitboard pieces =
+            GetPiecesDynamic(static_cast<Piece::Type>(piece),
+                             static_cast<Player::Type>(player), position);
         BitboardIterator iterator(pieces);
         while (iterator.Next()) {
           if (iterator.IsCurrentSquareOccupied()) {
             piecesStrings[iterator.GetCurrentSquare()] ==
                 pieceToText(static_cast<Piece::Type>(piece),
-                              static_cast<Player::Type>(player));
+                            static_cast<Player::Type>(player));
           }
         }
       }
@@ -64,4 +67,6 @@ class BoardVisualizator {
         break;
     }
   }
-  };
+};
+}  // namespace engine
+}  // namespace shogi

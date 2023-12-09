@@ -3,7 +3,8 @@
 #include <sstream>
 #include "Bitboard.h"
 #include "Rules.h"
-
+namespace shogi {
+namespace engine {
 struct Board {
   Bitboard bbs[BB::Type::SIZE];
   InHandPieces inHandPieces;
@@ -135,3 +136,5 @@ void print_Board(const Board& board);
 namespace Boards {
 Board STARTING_BOARD();
 }
+}  // namespace engine
+}  // namespace shogi

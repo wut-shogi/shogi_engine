@@ -6,6 +6,8 @@
 #include <iostream>
 #include "Rules.h"
 #include "Square.h"
+namespace shogi {
+namespace engine {
 
 namespace BB {
 enum Type {
@@ -23,11 +25,6 @@ enum Type {
 
   ALL_WHITE,
   ALL_BLACK,
-
-  // boards needed for vertical and diagonal sliding moves generation
-  OCCUPIED_ROT90,
-  OCCUPIED_ROTR45,
-  OCCUPIED_ROTL45,
 
   END,
   SIZE = END
@@ -350,3 +347,5 @@ struct BitboardIterator {
 
   bool IsCurrentSquareOccupied() { return occupied; };
 };
+}  // namespace engine
+}  // namespace shogi

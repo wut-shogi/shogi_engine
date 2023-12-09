@@ -2,7 +2,8 @@
 #include <vector>
 #include "Board.h"
 #include "MoveGenHelpers.h"
-
+namespace shogi {
+namespace engine {
 struct Move {
   uint16_t from : 7;
   uint16_t to : 7;
@@ -39,10 +40,22 @@ void generateBlackMoves(const Board& board,
                         Move* movesArray,
                         size_t offset);
 
-// Returns all legal moves from given position for given player
-// Return value is and array of vectors of moves. Each entry in the array stores
-// are legal moves from square entryIndex as target square index and boolean
-// information if promotion can be done
-std::array<std::vector<std::pair<int, bool>>, BOARD_SIZE + 14> getAllLegalMoves(
-    const Board& board,
-    bool isWhite);
+void makeMove(Board& board, const Move& move);
+
+std::vector<Move> getAllLegalMoves(const Board& board, bool isWhite);
+std::vector<std::string> getAllLegalMovesUSI(const Board& board, bool isWhite);
+
+Move getBestMove(const Board& board,
+                 bool isWhite,
+                 unsigned int maxDepth,
+                 unsigned int maxTime = 0);
+
+std::string getBestMoveUSI(const Board& board,
+                           bool isWhite,
+                           unsigned int maxDepth,
+                           unsigned int maxTime = 0);
+
+std::string moveToString(const Move& move);
+
+}  // namespace engine
+}  // namespace shogi
