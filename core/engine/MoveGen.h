@@ -1,6 +1,6 @@
 #pragma once
+#include <string>
 #include <vector>
-#include "Board.h"
 #include "MoveGenHelpers.h"
 namespace shogi {
 namespace engine {
@@ -41,6 +41,11 @@ void generateBlackMoves(const Board& board,
                         size_t offset);
 
 void makeMove(Board& board, const Move& move);
+
+void generateNextBoards(const Board& board,
+                        Move* movesArray,
+                        size_t length,
+                        Board* newBoardsArray);
 
 std::vector<Move> getAllLegalMoves(const Board& board, bool isWhite);
 std::vector<std::string> getAllLegalMovesUSI(const Board& board, bool isWhite);

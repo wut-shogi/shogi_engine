@@ -51,23 +51,27 @@ inline uint32_t isBitSet(uint32_t region, int bit) {
   return (region & (1 << bit)) >> bit;
 }
 
-struct PlayerInHandPieces {
-  uint16_t Pawn : 4;
-  uint16_t Lance : 2;
-  uint16_t Knight : 2;
-  uint16_t SilverGeneral : 2;
-  uint16_t GoldGeneral : 2;
-  uint16_t Bishop : 1;
-  uint16_t Rook : 1;
+struct PieceNumber {
+  uint64_t WhitePawn : 4;
+  uint64_t WhiteLance : 4;
+  uint64_t WhiteKnight : 4;
+  uint64_t WhiteSilverGeneral : 4;
+  uint64_t WhiteGoldGeneral : 4;
+  uint64_t WhiteBishop : 4;
+  uint64_t WhiteRook : 4;
+  uint64_t BlackPawn : 4;
+  uint64_t BlackLance : 4;
+  uint64_t BlackKnight : 4;
+  uint64_t BlackSilverGeneral : 4;
+  uint64_t BlackGoldGeneral : 4;
+  uint64_t BlackBishop : 4;
+  uint64_t BlackRook : 4;
 };
+union InHandLayout {
+  uint64_t value;
+  PieceNumber pieceNumber;
 
-union InHandPieces {
-  uint32_t value;
-  struct {
-    PlayerInHandPieces White;
-    PlayerInHandPieces Black;
-  };
-  InHandPieces() { value = 0; }
+  InHandLayout() { value = 0; }
 };
 
 struct Bitboard {

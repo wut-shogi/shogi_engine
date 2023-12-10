@@ -4,8 +4,8 @@
 namespace shogi {
 namespace engine {
 Board Boards::STARTING_BOARD() {
-  InHandPieces inHandPieces;
-  inHandPieces.value = 0;
+  InHandLayout inHand;
+  inHand.value = 0;
   static Board b = {{
                         Bitboards::STARTING_PAWN(),
                         Bitboards::STARTING_KNIGHT(),
@@ -19,7 +19,7 @@ Board Boards::STARTING_BOARD() {
                         Bitboards::STARTING_ALL_WHITE(),
                         Bitboards::STARTING_ALL_BLACK()
                     },
-                    inHandPieces};
+      inHand};
   return b;
 }
 

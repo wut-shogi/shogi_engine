@@ -7,11 +7,11 @@ namespace shogi {
 namespace engine {
 struct Board {
   Bitboard bbs[BB::Type::SIZE];
-  InHandPieces inHandPieces;
+  InHandLayout inHand;
   Board() {}
 
-  Board(std::array<Bitboard, BB::Type::SIZE>&& bbs, InHandPieces inHandPieces)
-      : inHandPieces(inHandPieces) {
+  Board(std::array<Bitboard, BB::Type::SIZE>&& bbs, InHandLayout inHand)
+      : inHand(inHand) {
     std::memcpy(this->bbs, bbs.data(), sizeof(this->bbs));
   }
   static Board FromSFEN(std::string SFENstring, bool& outIsWhite) {
@@ -75,38 +75,52 @@ struct Board {
     }
 
     int count = 1;
-    PlayerInHandPieces* playerInHandPieces;
     for (char c : captures) {
       if (isdigit(c)) {
         count = c - '0';
       } else {
-        if (c >= 'A' && c <= 'Z') {
-          playerInHandPieces = &result.inHandPieces.Black;
-          c += 32;
-        } else {
-          playerInHandPieces = &result.inHandPieces.White;
-        }
         switch (c) {
           case 'p':
-            playerInHandPieces->Pawn = count;
+            result.inHand.pieceNumber.WhitePawn = count;
             break;
           case 'l':
-            playerInHandPieces->Lance = count;
+            result.inHand.pieceNumber.WhiteLance = count;
             break;
           case 'n':
-            playerInHandPieces->Knight = count;
+            result.inHand.pieceNumber.WhiteKnight = count;
             break;
           case 's':
-            playerInHandPieces->SilverGeneral = count;
+            result.inHand.pieceNumber.WhiteSilverGeneral = count;
             break;
           case 'g':
-            playerInHandPieces->GoldGeneral = count;
+            result.inHand.pieceNumber.WhiteGoldGeneral = count;
             break;
           case 'b':
-            playerInHandPieces->Bishop = count;
+            result.inHand.pieceNumber.WhiteBishop = count;
             break;
           case 'r':
-            playerInHandPieces->Rook = count;
+            result.inHand.pieceNumber.WhiteRook = count;
+            break;
+          case 'P':
+            result.inHand.pieceNumber.BlackPawn = count;
+            break;
+          case 'L':
+            result.inHand.pieceNumber.BlackLance = count;
+            break;
+          case 'N':
+            result.inHand.pieceNumber.BlackKnight = count;
+            break;
+          case 'S':
+            result.inHand.pieceNumber.BlackSilverGeneral = count;
+            break;
+          case 'G':
+            result.inHand.pieceNumber.BlackGoldGeneral = count;
+            break;
+          case 'B':
+            result.inHand.pieceNumber.BlackBishop = count;
+            break;
+          case 'R':
+            result.inHand.pieceNumber.BlackRook = count;
             break;
           default:
             break;

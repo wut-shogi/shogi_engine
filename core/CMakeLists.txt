@@ -1,8 +1,5 @@
-set(cudaFiles
-    engine/kernels.cu
-)
-
 set(headerFiles
+    engine/ai.h
     engine/Bitboard.h
     engine/Board.h
     engine/BoardVisualization.h
@@ -15,6 +12,7 @@ set(headerFiles
 )
 
 set(sourceFiles
+    engine/ai.cpp
     engine/Bitboard.cpp
     engine/Board.cpp
     engine/engine.cpp
@@ -30,7 +28,7 @@ set(dllFiles
 )
 
 add_library(shogi_engine_core STATIC
-    ${cudaFiles} ${headerFiles} ${sourceFiles}
+    ${headerFiles} ${sourceFiles}
 )
 target_include_directories(shogi_engine_core PUBLIC include)
 

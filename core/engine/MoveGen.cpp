@@ -449,7 +449,7 @@ size_t countWhiteMoves(const Board& board,
   {
     Bitboard legalDropSpots;
     // Pawns
-    if (board.inHandPieces.White.Pawn > 0) {
+    if (board.inHand.pieceNumber.WhitePawn > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last rank
       legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
@@ -481,7 +481,7 @@ size_t countWhiteMoves(const Board& board,
                        std::popcount<uint32_t>(legalDropSpots[MID]) +
                        std::popcount<uint32_t>(legalDropSpots[BOTTOM]);
     }
-    if (board.inHandPieces.White.Lance > 0) {
+    if (board.inHand.pieceNumber.WhiteLance > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last rank
       legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
@@ -489,7 +489,7 @@ size_t countWhiteMoves(const Board& board,
                        std::popcount<uint32_t>(legalDropSpots[MID]) +
                        std::popcount<uint32_t>(legalDropSpots[BOTTOM]);
     }
-    if (board.inHandPieces.White.Knight > 0) {
+    if (board.inHand.pieceNumber.WhiteKnight > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last two ranks
       legalDropSpots[BOTTOM] &= TOP_RANK;
@@ -498,10 +498,10 @@ size_t countWhiteMoves(const Board& board,
                        std::popcount<uint32_t>(legalDropSpots[BOTTOM]);
     }
     legalDropSpots = ~occupied;
-    numberOfMoves += ((board.inHandPieces.White.SilverGeneral > 0) +
-                      (board.inHandPieces.White.GoldGeneral > 0) +
-                      (board.inHandPieces.White.Bishop > 0) +
-                      (board.inHandPieces.White.Rook > 0)) *
+    numberOfMoves += ((board.inHand.pieceNumber.WhiteSilverGeneral > 0) +
+                      (board.inHand.pieceNumber.WhiteGoldGeneral > 0) +
+                      (board.inHand.pieceNumber.WhiteBishop > 0) +
+                      (board.inHand.pieceNumber.WhiteRook > 0)) *
                      (std::popcount<uint32_t>(legalDropSpots[TOP]) +
                       std::popcount<uint32_t>(legalDropSpots[MID]) +
                       std::popcount<uint32_t>(legalDropSpots[BOTTOM]));
@@ -954,7 +954,7 @@ size_t countBlackMoves(const Board& board,
   {
     Bitboard legalDropSpots;
     // Pawns
-    if (board.inHandPieces.Black.Pawn > 0) {
+    if (board.inHand.pieceNumber.BlackPawn > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last rank
       legalDropSpots[TOP] &= ~TOP_RANK;
@@ -986,7 +986,7 @@ size_t countBlackMoves(const Board& board,
                        std::popcount<uint32_t>(legalDropSpots[MID]) +
                        std::popcount<uint32_t>(legalDropSpots[BOTTOM]);
     }
-    if (board.inHandPieces.Black.Lance > 0) {
+    if (board.inHand.pieceNumber.BlackLance > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last rank
       legalDropSpots[TOP] &= ~TOP_RANK;
@@ -994,7 +994,7 @@ size_t countBlackMoves(const Board& board,
                        std::popcount<uint32_t>(legalDropSpots[MID]) +
                        std::popcount<uint32_t>(legalDropSpots[BOTTOM]);
     }
-    if (board.inHandPieces.Black.Knight > 0) {
+    if (board.inHand.pieceNumber.BlackKnight > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last two ranks
       legalDropSpots[TOP] &= TOP_RANK;
@@ -1003,10 +1003,10 @@ size_t countBlackMoves(const Board& board,
                        std::popcount<uint32_t>(legalDropSpots[BOTTOM]);
     }
     legalDropSpots = ~occupied;
-    numberOfMoves += ((board.inHandPieces.Black.SilverGeneral > 0) +
-                      (board.inHandPieces.Black.GoldGeneral > 0) +
-                      (board.inHandPieces.Black.Bishop > 0) +
-                      (board.inHandPieces.Black.Rook > 0)) *
+    numberOfMoves += ((board.inHand.pieceNumber.BlackSilverGeneral > 0) +
+                      (board.inHand.pieceNumber.BlackGoldGeneral > 0) +
+                      (board.inHand.pieceNumber.BlackBishop > 0) +
+                      (board.inHand.pieceNumber.BlackRook > 0)) *
                      (std::popcount<uint32_t>(legalDropSpots[TOP]) +
                       std::popcount<uint32_t>(legalDropSpots[MID]) +
                       std::popcount<uint32_t>(legalDropSpots[BOTTOM]));
@@ -1400,7 +1400,7 @@ void generateWhiteMoves(const Board& board,
   {
     Bitboard legalDropSpots;
     // Pawns
-    if (board.inHandPieces.White.Pawn > 0) {
+    if (board.inHand.pieceNumber.WhitePawn > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last rank
       legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
@@ -1436,7 +1436,7 @@ void generateWhiteMoves(const Board& board,
         currentMove++;
       }
     }
-    if (board.inHandPieces.White.Lance > 0) {
+    if (board.inHand.pieceNumber.WhiteLance > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last rank
       legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
@@ -1448,7 +1448,7 @@ void generateWhiteMoves(const Board& board,
         currentMove++;
       }
     }
-    if (board.inHandPieces.White.Knight > 0) {
+    if (board.inHand.pieceNumber.WhiteKnight > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last two ranks
       legalDropSpots[BOTTOM] &= TOP_RANK;
@@ -1463,25 +1463,25 @@ void generateWhiteMoves(const Board& board,
     legalDropSpots = ~occupied;
     movesIterator.Init(legalDropSpots);
     while (movesIterator.Next()) {
-      if (board.inHandPieces.White.SilverGeneral > 0) {
+      if (board.inHand.pieceNumber.WhiteSilverGeneral > 0) {
         move.from = WHITE_SILVER_GENERAL_DROP;
         move.to = movesIterator.GetCurrentSquare();
         *currentMove = move;
         currentMove++;
       }
-      if (board.inHandPieces.White.GoldGeneral > 0) {
+      if (board.inHand.pieceNumber.WhiteGoldGeneral > 0) {
         move.from = WHITE_GOLD_GENERAL_DROP;
         move.to = movesIterator.GetCurrentSquare();
         *currentMove = move;
         currentMove++;
       }
-      if (board.inHandPieces.White.Bishop > 0) {
+      if (board.inHand.pieceNumber.WhiteBishop > 0) {
         move.from = WHITE_BISHOP_DROP;
         move.to = movesIterator.GetCurrentSquare();
         *currentMove = move;
         currentMove++;
       }
-      if (board.inHandPieces.White.Rook > 0) {
+      if (board.inHand.pieceNumber.WhiteRook > 0) {
         move.from = WHITE_ROOK_DROP;
         move.to = movesIterator.GetCurrentSquare();
         *currentMove = move;
@@ -1865,7 +1865,7 @@ void generateBlackMoves(const Board& board,
   {
     Bitboard legalDropSpots;
     // Pawns
-    if (board.inHandPieces.Black.Pawn > 0) {
+    if (board.inHand.pieceNumber.BlackPawn > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last rank
       legalDropSpots[TOP] &= ~TOP_RANK;
@@ -1901,7 +1901,7 @@ void generateBlackMoves(const Board& board,
         currentMove++;
       }
     }
-    if (board.inHandPieces.Black.Lance > 0) {
+    if (board.inHand.pieceNumber.BlackLance > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last rank
       legalDropSpots[TOP] &= ~TOP_RANK;
@@ -1913,7 +1913,7 @@ void generateBlackMoves(const Board& board,
         currentMove++;
       }
     }
-    if (board.inHandPieces.Black.Knight > 0) {
+    if (board.inHand.pieceNumber.BlackKnight > 0) {
       legalDropSpots = ~occupied;
       // Cannot drop on last two ranks
       legalDropSpots[TOP] &= TOP_RANK;
@@ -1928,25 +1928,25 @@ void generateBlackMoves(const Board& board,
     legalDropSpots = ~occupied;
     movesIterator.Init(legalDropSpots);
     while (movesIterator.Next()) {
-      if (board.inHandPieces.Black.SilverGeneral > 0) {
+      if (board.inHand.pieceNumber.BlackSilverGeneral > 0) {
         move.from = BLACK_SILVER_GENERAL_DROP;
         move.to = movesIterator.GetCurrentSquare();
         *currentMove = move;
         currentMove++;
       }
-      if (board.inHandPieces.Black.GoldGeneral > 0) {
+      if (board.inHand.pieceNumber.BlackGoldGeneral > 0) {
         move.from = BLACK_GOLD_GENERAL_DROP;
         move.to = movesIterator.GetCurrentSquare();
         *currentMove = move;
         currentMove++;
       }
-      if (board.inHandPieces.Black.Bishop > 0) {
+      if (board.inHand.pieceNumber.BlackBishop > 0) {
         move.from = BLACK_BISHOP_DROP;
         move.to = movesIterator.GetCurrentSquare();
         *currentMove = move;
         currentMove++;
       }
-      if (board.inHandPieces.Black.Rook > 0) {
+      if (board.inHand.pieceNumber.BlackRook > 0) {
         move.from = BLACK_ROOK_DROP;
         move.to = movesIterator.GetCurrentSquare();
         *currentMove = move;
@@ -1957,11 +1957,11 @@ void generateBlackMoves(const Board& board,
 }
 
 void makeMove(Board& board, const Move& move) {
-  Region fromRegionIdx = squareToRegion(static_cast<Square>(move.from));
-  uint32_t fromRegion = 1 << (REGION_SIZE - 1 - move.from % REGION_SIZE);
   Region toRegionIdx = squareToRegion(static_cast<Square>(move.to));
   uint32_t toRegion = 1 << (REGION_SIZE - 1 - move.to % REGION_SIZE);
   if (move.from < SQUARE_SIZE) {
+    Region fromRegionIdx = squareToRegion(static_cast<Square>(move.from));
+    uint32_t fromRegion = 1 << (REGION_SIZE - 1 - move.from % REGION_SIZE);
     for (int i = 0; i < BB::Type::SIZE; i++) {
       if (board[static_cast<BB::Type>(i)][toRegionIdx] & toRegion) {
         board[static_cast<BB::Type>(i)][toRegionIdx] &= ~toRegion;
@@ -1970,79 +1970,26 @@ void makeMove(Board& board, const Move& move) {
         board[static_cast<BB::Type>(i)][toRegionIdx] |= toRegion;
       }
     }
-  } else {
-    switch (static_cast<Square>(move.from)) {
-      case WHITE_PAWN_DROP:
-        board.inHandPieces.White.Pawn--;
-        board[BB::Type::PAWN][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_WHITE][toRegionIdx] |= toRegion;
-        break;
-      case WHITE_LANCE_DROP:
-        board.inHandPieces.White.Lance--;
-        board[BB::Type::LANCE][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_WHITE][toRegionIdx] |= toRegion;
-        break;
-      case WHITE_KNIGHT_DROP:
-        board.inHandPieces.White.Knight--;
-        board[BB::Type::KNIGHT][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_WHITE][toRegionIdx] |= toRegion;
-        break;
-      case WHITE_SILVER_GENERAL_DROP:
-        board.inHandPieces.White.SilverGeneral--;
-        board[BB::Type::SILVER_GENERAL][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_WHITE][toRegionIdx] |= toRegion;
-        break;
-      case WHITE_GOLD_GENERAL_DROP:
-        board.inHandPieces.White.GoldGeneral--;
-        board[BB::Type::GOLD_GENERAL][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_WHITE][toRegionIdx] |= toRegion;
-        break;
-      case WHITE_BISHOP_DROP:
-        board.inHandPieces.White.Bishop--;
-        board[BB::Type::BISHOP][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_WHITE][toRegionIdx] |= toRegion;
-        break;
-      case WHITE_ROOK_DROP:
-        board.inHandPieces.White.Rook--;
-        board[BB::Type::ROOK][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_WHITE][toRegionIdx] |= toRegion;
-        break;
-      case BLACK_PAWN_DROP:
-        board.inHandPieces.Black.Pawn--;
-        board[BB::Type::PAWN][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_BLACK][toRegionIdx] |= toRegion;
-        break;
-      case BLACK_LANCE_DROP:
-        board.inHandPieces.Black.Lance--;
-        board[BB::Type::LANCE][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_BLACK][toRegionIdx] |= toRegion;
-        break;
-      case BLACK_KNIGHT_DROP:
-        board.inHandPieces.Black.Knight--;
-        board[BB::Type::KNIGHT][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_BLACK][toRegionIdx] |= toRegion;
-        break;
-      case BLACK_SILVER_GENERAL_DROP:
-        board.inHandPieces.Black.SilverGeneral--;
-        board[BB::Type::SILVER_GENERAL][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_BLACK][toRegionIdx] |= toRegion;
-        break;
-      case BLACK_GOLD_GENERAL_DROP:
-        board.inHandPieces.Black.GoldGeneral--;
-        board[BB::Type::GOLD_GENERAL][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_BLACK][toRegionIdx] |= toRegion;
-        break;
-      case BLACK_BISHOP_DROP:
-        board.inHandPieces.Black.Bishop--;
-        board[BB::Type::BISHOP][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_BLACK][toRegionIdx] |= toRegion;
-        break;
-      case BLACK_ROOK_DROP:
-        board.inHandPieces.Black.Rook--;
-        board[BB::Type::ROOK][toRegionIdx] |= toRegion;
-        board[BB::Type::ALL_BLACK][toRegionIdx] |= toRegion;
-        break;
+    if (move.promotion) {
+      board[BB::Type::PROMOTED][toRegionIdx] |= toRegion;
     }
+  } else {
+    int offset = move.from - WHITE_PAWN_DROP;
+    uint64_t addedValue = 1 << offset;
+    board.inHand.value -= addedValue;
+    board[static_cast<BB::Type>(offset / 2)][toRegionIdx] |= toRegion;
+    board[static_cast<BB::Type>(BB::Type::ALL_WHITE + offset / 7)]
+         [toRegionIdx] |= toRegion;
+  }
+}
+
+void generateNextBoards(const Board& board,
+                        Move* movesArray,
+                        size_t length,
+                        Board* newBoardsArray) {
+  for (int i = 0; i < length; i++) {
+    newBoardsArray[i] = board;
+    makeMove(newBoardsArray[i], movesArray[i]);
   }
 }
 
@@ -2071,9 +2018,9 @@ std::vector<std::string> getAllLegalMovesUSI(const Board& board, bool isWhite) {
 }
 
 Move getBestMove(const Board& board,
-                        bool isWhite,
-                        unsigned int maxDepth,
-                        unsigned int maxTime) {
+                 bool isWhite,
+                 unsigned int maxDepth,
+                 unsigned int maxTime) {
   Bitboard validMoves, attackedByEnemy;
   size_t movesCount;
   std::vector<Move> moves;
