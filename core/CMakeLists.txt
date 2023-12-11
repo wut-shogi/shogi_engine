@@ -1,5 +1,5 @@
 set(headerFiles
-    engine/ai.h
+    engine/GameTree.h
     engine/Bitboard.h
     engine/Board.h
     engine/BoardVisualization.h
@@ -12,7 +12,7 @@ set(headerFiles
 )
 
 set(sourceFiles
-    engine/ai.cpp
+    engine/GameTree.cpp
     engine/Bitboard.cpp
     engine/Board.cpp
     engine/engine.cpp

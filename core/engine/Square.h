@@ -1,4 +1,5 @@
 #include <cstdint>
+#include "Rules.h"
 
 namespace shogi {
 namespace engine {
@@ -55,5 +56,21 @@ inline int squareToFile(Square square) {
 inline Square rankFileToSquare(uint32_t rank, uint32_t file) {
   return static_cast<Square>(rank * BOARD_DIM + file);
 }
+
+enum Region : uint32_t {
+  TOP = 0,
+  MID = 1,
+  BOTTOM = 2,
+
+  REGION_SIZE = 27,
+  REGION_DIM = 3,
+  NUMBER_OF_REGIONS = 3,
+  EMPTY_REGION = 0,
+  FULL_REGION = 134217727,
+};
+inline Region squareToRegion(Square square) {
+  return (Region)(square / REGION_SIZE);
+}
+
 }  // namespace engine
 }  // namespace shogi

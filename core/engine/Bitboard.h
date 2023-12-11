@@ -31,21 +31,29 @@ enum Type {
 };
 }
 
-enum Region : uint32_t {
-  TOP = 0,
-  MID = 1,
-  BOTTOM = 2,
-
-  REGION_SIZE = 27,
-  REGION_DIM = 3,
-  NUMBER_OF_REGIONS = 3,
-  EMPTY_REGION = 0,
-  FULL_REGION = 134217727,
+enum PieceValue : int16_t {
+  PAWN = 10,
+  LANCE = 43,
+  KNIGHT = 45,
+  SILVER_GENERAL = 64,
+  GOLD_GENERAL = 69,
+  BISHOP = 89,
+  ROOK = 104,
+  IN_HAND_PAWN = 12,
+  IN_HAND_LANCE = 48,
+  IN_HAND_KNIGHT = 51,
+  IN_HAND_SILVER_GENERAL = 72,
+  IN_HAND_GOLD_GENERAL = 78,
+  IN_HAND_BISHOP = 111,
+  IN_HAND_ROOK = 127,
+  PROMOTED_PAWN = 42,
+  PROMOTED_LANCE = 63,
+  PROMOTED_KNIGHT = 64,
+  PROMOTED_SILVER_GENERAL = 67,
+  PROMOTED_BISHOP = 115,
+  PROMOTED_ROOK = 130,
+  MATE = 30000
 };
-
-inline Region squareToRegion(Square square) {
-  return (Region)(square / REGION_SIZE);
-}
 
 inline uint32_t isBitSet(uint32_t region, int bit) {
   return (region & (1 << bit)) >> bit;
@@ -136,11 +144,6 @@ struct Bitboard {
     int shift = REGION_SIZE - 1 - square % REGION_SIZE;
     return (bb[region] & (1 << shift)) != 0;
   }
-
-  int numberOfPieces() const {
-    return std::popcount<uint32_t>(bb[TOP]) + std::popcount<uint32_t>(bb[MID]) +
-           std::popcount<uint32_t>(bb[BOTTOM]);
-  }
 };
 
 inline Bitboard operator&(const Bitboard& BB1, const Bitboard& BB2) {
@@ -154,6 +157,11 @@ inline Bitboard operator|(const Bitboard& BB1, const Bitboard& BB2) {
 inline Bitboard operator~(const Bitboard& bb) {
   return {(~bb[TOP]) & FULL_REGION, (~bb[MID]) & FULL_REGION,
           (~bb[BOTTOM]) & FULL_REGION};
+}
+
+inline uint32_t popcount(const Bitboard& bb) {
+  return std::popcount<uint32_t>(bb[TOP]) + std::popcount<uint32_t>(bb[MID]) +
+         std::popcount<uint32_t>(bb[BOTTOM]);
 }
 
 namespace Bitboards {
@@ -171,114 +179,6 @@ Bitboard STARTING_PROMOTED();
 Bitboard STARTING_ALL_WHITE();
 Bitboard STARTING_ALL_BLACK();
 }  // namespace Bitboards
-
-inline void Clear_BB(Bitboard& dst) {
-  dst = Bitboards::EMPTY();
-}
-
-inline void Set_BB(Bitboard& dst) {
-  dst = Bitboards::FULL();
-}
-
-inline void Copy_BB(Bitboard& dst, const Bitboard& src) {
-  std::memcpy(dst.bb, src.bb, sizeof(dst.bb));
-}
-
-inline Square Rotate90Clockwise(Square square) {
-  static const uint32_t rot90Mapping[BOARD_SIZE] = {
-      72, 63, 54, 45, 36, 27, 18, 9,  0,  //
-      73, 64, 55, 46, 37, 28, 19, 10, 1,  //
-      74, 65, 56, 47, 38, 29, 20, 11, 2,  //
-      75, 66, 57, 48, 39, 30, 21, 12, 3,  //
-      76, 67, 58, 49, 40, 31, 22, 13, 4,  //
-      77, 68, 59, 50, 41, 32, 23, 14, 5,  //
-      78, 69, 60, 51, 42, 33, 24, 15, 6,  //
-      79, 70, 61, 52, 43, 34, 25, 16, 7,  //
-      80, 71, 62, 53, 44, 35, 26, 17, 8,
-  };
-
-  return static_cast<Square>(rot90Mapping[square]);
-}
-
-inline Square Rotate90AntiClockwise(Square square) {
-  static const uint32_t rot90Mapping[BOARD_SIZE] = {
-      8, 17, 26, 35, 44, 53, 62, 71, 80,  //
-      7, 16, 25, 34, 43, 52, 61, 70, 79,  //
-      6, 15, 24, 33, 42, 51, 60, 69, 78,  //
-      5, 14, 23, 32, 41, 50, 59, 68, 77,  //
-      4, 13, 22, 31, 40, 49, 58, 67, 76,  //
-      3, 12, 21, 30, 39, 48, 57, 66, 75,  //
-      2, 11, 20, 29, 38, 47, 56, 65, 74,  //
-      1, 10, 19, 28, 37, 46, 55, 64, 73,  //
-      0, 9,  18, 27, 36, 45, 54, 63, 72,
-  };
-
-  return static_cast<Square>(rot90Mapping[square]);
-}
-
-inline Square Rotate45Clockwise(Square square) {
-  static const uint32_t rot45Mapping[BOARD_SIZE] = {
-      9,  1,  18, 10, 2,  27, 19, 11, 3,   //
-      36, 28, 20, 12, 4,  45, 37, 29, 21,  //
-      13, 5,  54, 46, 38, 30, 22, 14, 6,   //
-      63, 55, 47, 39, 31, 23, 15, 7,  0,   //
-      72, 64, 56, 48, 40, 32, 24, 16, 8,   //
-      73, 65, 57, 49, 41, 33, 25, 17, 80,  //
-      74, 66, 58, 50, 42, 34, 26, 75, 67,  //
-      59, 51, 43, 35, 76, 68, 60, 52, 44,  //
-      77, 69, 61, 53, 78, 70, 62, 79, 71,
-  };
-
-  return static_cast<Square>(rot45Mapping[square]);
-}
-
-inline Square Rotate45AntiClockwise(Square square) {
-  static const uint32_t rot45Mapping[BOARD_SIZE] = {
-      7,  17, 6,  16, 26, 5,  15, 25, 35,  //
-      4,  14, 24, 34, 44, 3,  13, 23, 33,  //
-      43, 53, 2,  12, 22, 32, 42, 52, 62,  //
-      1,  11, 21, 31, 41, 51, 61, 71, 8,   //
-      0,  10, 20, 30, 40, 50, 60, 70, 80,  //
-      9,  19, 29, 39, 49, 59, 69, 79, 72,  //
-      18, 28, 38, 48, 58, 68, 78, 27, 37,  //
-      47, 57, 67, 77, 36, 46, 56, 66, 76,  //
-      45, 55, 65, 75, 54, 64, 74, 63, 73,
-  };
-
-  return static_cast<Square>(rot45Mapping[square]);
-}
-
-inline Bitboard Rotate90Clockwise(const Bitboard& bb) {
-  std::array<bool, BOARD_SIZE> mat;
-  for (int sq = A9; sq < SQUARE_SIZE; sq++) {
-    mat[sq] = bb.GetBit(Rotate90Clockwise(static_cast<Square>(sq)));
-  }
-  return Bitboard(mat);
-}
-
-inline Bitboard Rotate90AntiClockwise(const Bitboard& bb) {
-  std::array<bool, BOARD_SIZE> mat;
-  for (int sq = A9; sq < SQUARE_SIZE; sq++) {
-    mat[sq] = bb.GetBit(Rotate90AntiClockwise(static_cast<Square>(sq)));
-  }
-  return Bitboard(mat);
-}
-
-inline Bitboard Rotate45Clockwise(const Bitboard& bb) {
-  std::array<bool, BOARD_SIZE> mat;
-  for (int sq = A9; sq < SQUARE_SIZE; sq++) {
-    mat[sq] = bb.GetBit(Rotate45Clockwise(static_cast<Square>(sq)));
-  }
-  return Bitboard(mat);
-}
-
-inline Bitboard Rotate45AntiClockwise(const Bitboard& bb) {
-  std::array<bool, BOARD_SIZE> mat;
-  for (int sq = A9; sq < SQUARE_SIZE; sq++) {
-    mat[sq] = bb.GetBit(Rotate45AntiClockwise(static_cast<Square>(sq)));
-  }
-  return Bitboard(mat);
-}
 
 inline void print_BB(Bitboard src) {
   std::bitset<32> bits;
@@ -307,10 +207,6 @@ static const int MultiplyDeBruijnBitPosition[32] = {
     31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6,  11, 5,  10, 9};
 
 inline int ffs_host(uint32_t value) {
-  // if (value == 0) {
-  //   return -1;  // Handle the case where value is zero
-  // }
-
   // Use a lookup table to find the index of the least significant set bit
   return MultiplyDeBruijnBitPosition[((uint32_t)((value & -value) *
                                                  0x077CB531U)) >>

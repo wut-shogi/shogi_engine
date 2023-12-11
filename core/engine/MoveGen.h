@@ -47,6 +47,8 @@ void generateNextBoards(const Board& board,
                         size_t length,
                         Board* newBoardsArray);
 
+void evaluateBoard(const Board& board, int16_t* valuesArray, uint32_t offset);
+
 std::vector<Move> getAllLegalMoves(const Board& board, bool isWhite);
 std::vector<std::string> getAllLegalMovesUSI(const Board& board, bool isWhite);
 

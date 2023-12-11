@@ -1993,6 +1993,119 @@ void generateNextBoards(const Board& board,
   }
 }
 
+void evaluateBoard(const Board& board, int16_t* valuesArray, uint32_t offset) {
+  int16_t valueWhite = 0;
+  int16_t valueBlack = 0;
+  // White
+  // non promoted pieces
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::PAWN] &
+                ~board[BB::Type::PROMOTED]) * PieceValue::PAWN;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::KNIGHT] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::KNIGHT;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::LANCE] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::LANCE;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::SILVER_GENERAL] &
+               ~board[BB::Type::PROMOTED]) *
+      PieceValue::SILVER_GENERAL;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::GOLD_GENERAL] &
+               ~board[BB::Type::PROMOTED]) *
+      PieceValue::GOLD_GENERAL;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::BISHOP] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::BISHOP;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::ROOK] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::ROOK;
+  // promoted pieces
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::PAWN] &
+                         board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_PAWN;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::KNIGHT] &
+                         board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_KNIGHT;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::LANCE] &
+                         board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_LANCE;
+  valueWhite +=
+      popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::SILVER_GENERAL] &
+               board[BB::Type::PROMOTED]) *
+      PieceValue::PROMOTED_SILVER_GENERAL;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::BISHOP] &
+                         board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_BISHOP;
+  valueWhite += popcount(board[BB::Type::ALL_WHITE] & board[BB::Type::ROOK] &
+                        ~board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_ROOK;
+  // in hand
+  valueWhite += board.inHand.pieceNumber.WhitePawn * IN_HAND_PAWN;
+  valueWhite += board.inHand.pieceNumber.WhiteLance * IN_HAND_LANCE;
+  valueWhite += board.inHand.pieceNumber.WhiteKnight * IN_HAND_KNIGHT;
+  valueWhite += board.inHand.pieceNumber.WhiteSilverGeneral * IN_HAND_SILVER_GENERAL;
+  valueWhite += board.inHand.pieceNumber.WhiteGoldGeneral * IN_HAND_GOLD_GENERAL;
+  valueWhite += board.inHand.pieceNumber.WhiteBishop * IN_HAND_BISHOP;
+  valueWhite += board.inHand.pieceNumber.WhiteRook * IN_HAND_ROOK;
+
+  // Black
+  // non promoted pieces
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::PAWN] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::PAWN;
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::KNIGHT] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::KNIGHT;
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::LANCE] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::LANCE;
+  valueBlack +=
+      popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::SILVER_GENERAL] &
+               ~board[BB::Type::PROMOTED]) *
+      PieceValue::SILVER_GENERAL;
+  valueBlack +=
+      popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::GOLD_GENERAL] &
+               ~board[BB::Type::PROMOTED]) *
+      PieceValue::GOLD_GENERAL;
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::BISHOP] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::BISHOP;
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::ROOK] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::ROOK;
+  // promoted pieces
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::PAWN] &
+                         board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_PAWN;
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::KNIGHT] &
+                         board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_KNIGHT;
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::LANCE] &
+                         board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_LANCE;
+  valueBlack +=
+      popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::SILVER_GENERAL] &
+               board[BB::Type::PROMOTED]) *
+      PieceValue::PROMOTED_SILVER_GENERAL;
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::BISHOP] &
+                         board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_BISHOP;
+  valueBlack += popcount(board[BB::Type::ALL_BLACK] & board[BB::Type::ROOK] &
+                         ~board[BB::Type::PROMOTED]) *
+                PieceValue::PROMOTED_ROOK;
+  // in hand
+  valueBlack += board.inHand.pieceNumber.BlackPawn * IN_HAND_PAWN;
+  valueBlack += board.inHand.pieceNumber.BlackLance * IN_HAND_LANCE;
+  valueBlack += board.inHand.pieceNumber.BlackKnight * IN_HAND_KNIGHT;
+  valueBlack +=
+      board.inHand.pieceNumber.BlackSilverGeneral * IN_HAND_SILVER_GENERAL;
+  valueBlack +=
+      board.inHand.pieceNumber.BlackGoldGeneral * IN_HAND_GOLD_GENERAL;
+  valueBlack += board.inHand.pieceNumber.BlackBishop * IN_HAND_BISHOP;
+  valueBlack += board.inHand.pieceNumber.BlackRook * IN_HAND_ROOK;
+
+  valuesArray[offset] =  valueWhite - valueBlack;
+}
+
 std::vector<Move> getAllLegalMoves(const Board& board, bool isWhite) {
   Bitboard validMoves, attackedByEnemy;
   std::vector<Move> moves;

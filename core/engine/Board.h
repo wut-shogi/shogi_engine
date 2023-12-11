@@ -140,6 +140,7 @@ struct Board {
 
   Board& operator=(const Board& board) {
     std::memcpy(this->bbs, board.bbs, sizeof(this->bbs));
+    inHand.value = board.inHand.value;
     return *this;
   }
 };
