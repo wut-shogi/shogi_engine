@@ -1,50 +1,31 @@
-#include "MoveGenHelpers.h"
 #include <algorithm>
+#include "MoveGenHelpers.h"
 
 namespace shogi {
 namespace engine {
+    #define ARRAY_SIZE 10368
 /// Static arrays initialization
 // Attack bitboards
-std::array<std::array<Bitboard, BOARD_SIZE>, 128> initRankAttacks();
-std::array<std::array<Bitboard, BOARD_SIZE>, 128> initFileAttacks();
-std::array<std::array<Bitboard, BOARD_SIZE>, 128> initDiagRightAttacks();
-std::array<std::array<Bitboard, BOARD_SIZE>, 128> initDiagLeftAttacks();
-// Lance masks
+namespace CPU {
+std::array<Bitboard, ARRAY_SIZE> initRankAttacks();
+std::array<Bitboard, ARRAY_SIZE> initFileAttacks();
+std::array<Bitboard, ARRAY_SIZE> initDiagRightAttacks();
+std::array<Bitboard, ARRAY_SIZE> initDiagLeftAttacks();
 std::array<Bitboard, BOARD_DIM> initRankMask();
 std::array<Bitboard, BOARD_DIM> initFileMask();
 
-static std::array<std::array<Bitboard, BOARD_SIZE>, 128> rankAttacks =
+static std::array<Bitboard, ARRAY_SIZE> rankAttacks =
     initRankAttacks();
-static std::array<std::array<Bitboard, BOARD_SIZE>, 128> fileAttacks =
+static std::array<Bitboard, ARRAY_SIZE> fileAttacks =
     initFileAttacks();
-static std::array<std::array<Bitboard, BOARD_SIZE>, 128> diagRightAttacks =
+static std::array<Bitboard, ARRAY_SIZE> diagRightAttacks =
     initDiagRightAttacks();
-static std::array<std::array<Bitboard, BOARD_SIZE>, 128> diagLeftAttacks =
+static std::array<Bitboard, ARRAY_SIZE> diagLeftAttacks =
     initDiagLeftAttacks();
 
 static std::array<Bitboard, BOARD_DIM> rankMask = initRankMask();
 static std::array<Bitboard, BOARD_DIM> fileMask = initFileMask();
 
-// Block patterns
-static uint32_t getRankBlockPattern(const Bitboard& bb, Square square) {
-  const uint32_t& region = bb[squareToRegion(square)];
-  uint32_t rowsBeforeInRegion = (square / BOARD_DIM) % 3;
-  uint32_t result = region << 5 << (rowsBeforeInRegion * BOARD_DIM) << 1 >> 25;
-  return result;
-}
-
-static uint32_t getFileBlockPattern(const Bitboard& occupied, Square square) {
-  int offset = squareToFile(square);
-  uint32_t result = 0;
-  result |= isBitSet(occupied[TOP], 17 - offset) << 6;
-  result |= isBitSet(occupied[TOP], 8 - offset) << 5;
-  result |= isBitSet(occupied[MID], 26 - offset) << 4;
-  result |= isBitSet(occupied[MID], 17 - offset) << 3;
-  result |= isBitSet(occupied[MID], 8 - offset) << 2;
-  result |= isBitSet(occupied[BOTTOM], 26 - offset) << 1;
-  result |= isBitSet(occupied[BOTTOM], 17 - offset);
-  return result;
-}
 
 uint32_t getDiagRightBlockPattern(const Bitboard& occupied, Square square) {
   static const uint32_t startingSquare[BOARD_SIZE] = {
@@ -78,8 +59,8 @@ uint32_t getDiagLeftBlockPattern(const Bitboard& occupied, Square square) {
       36, 27, 18, 9,  0,  1,  2,  3, 4,  //
       45, 36, 27, 18, 9,  0,  1,  2, 3,  //
       54, 45, 36, 27, 18, 9,  0,  1, 2,  //
-      63, 4,  45, 36, 27, 18, 9,  0, 1,  //
-      72, 63, 4,  45, 36, 27, 18, 9, 0,
+      63, 54, 45, 36, 27, 18, 9,  0, 1,  //
+      72, 63, 54, 45, 36, 27, 18, 9, 0,
   };
   uint32_t result = 0;
   int len = startingSquare[square] > 9 ? 7 - startingSquare[square] / 9
@@ -105,8 +86,8 @@ std::array<bool, 9> blockPatternToRow(uint32_t blockPattern) {
   return result;
 }
 
-std::array<std::array<Bitboard, BOARD_SIZE>, 128> initRankAttacks() {
-  std::array<std::array<Bitboard, BOARD_SIZE>, 128> result;
+std::array<Bitboard, ARRAY_SIZE> initRankAttacks() {
+  std::array<Bitboard, ARRAY_SIZE> result;
   std::array<bool, BOARD_SIZE> mat;
 
   for (uint32_t i = 0; i < BOARD_SIZE; i++) {
@@ -135,15 +116,15 @@ std::array<std::array<Bitboard, BOARD_SIZE>, 128> initRankAttacks() {
              (blockIdx <= firstRight && blockIdx > columnIdx)))
           mat[rowIdx * BOARD_DIM + blockIdx] = 1;
       }
-      result[blockPattern][i] = mat;
+      result[i * 128 + blockPattern] = mat;
     }
   }
 
   return result;
 }
 
-std::array<std::array<Bitboard, BOARD_SIZE>, 128> initFileAttacks() {
-  std::array<std::array<Bitboard, BOARD_SIZE>, 128> result;
+std::array<Bitboard, ARRAY_SIZE> initFileAttacks() {
+  std::array<Bitboard, ARRAY_SIZE> result;
   std::array<bool, BOARD_SIZE> mat;
 
   for (uint32_t i = 0; i < BOARD_SIZE; i++) {
@@ -172,15 +153,15 @@ std::array<std::array<Bitboard, BOARD_SIZE>, 128> initFileAttacks() {
              (blockIdx <= firstRight && blockIdx > rowIdx)))
           mat[blockIdx * BOARD_DIM + columnIdx] = 1;
       }
-      result[blockPattern][i] = mat;
+      result[i * 128 + blockPattern] = mat;
     }
   }
 
   return result;
 }
 
-std::array<std::array<Bitboard, BOARD_SIZE>, 128> initDiagRightAttacks() {
-  std::array<std::array<Bitboard, BOARD_SIZE>, 128> result;
+std::array<Bitboard, ARRAY_SIZE> initDiagRightAttacks() {
+  std::array<Bitboard, ARRAY_SIZE> result;
   std::array<bool, BOARD_SIZE> mat;
 
   for (uint32_t i = 0; i < BOARD_SIZE; i++) {
@@ -228,15 +209,15 @@ std::array<std::array<Bitboard, BOARD_SIZE>, 128> initDiagRightAttacks() {
         tmpRowIdx--;
         tmpColIdx++;
       }
-      result[blockPattern][i] = mat;
+      result[i * 128 + blockPattern] = mat;
     }
   }
 
   return result;
 }
 
-std::array<std::array<Bitboard, BOARD_SIZE>, 128> initDiagLeftAttacks() {
-  std::array<std::array<Bitboard, BOARD_SIZE>, 128> result;
+std::array<Bitboard, ARRAY_SIZE> initDiagLeftAttacks() {
+  std::array<Bitboard, ARRAY_SIZE> result;
   std::array<bool, BOARD_SIZE> mat;
 
   for (uint32_t i = 0; i < BOARD_SIZE; i++) {
@@ -283,7 +264,7 @@ std::array<std::array<Bitboard, BOARD_SIZE>, 128> initDiagLeftAttacks() {
         tmpRowIdx--;
         tmpColIdx--;
       }
-      result[blockPattern][i] = mat;
+      result[i * 128 + blockPattern] = mat;
     }
   }
 
@@ -319,19 +300,21 @@ std::array<Bitboard, BOARD_DIM> initFileMask() {
 }
 
 const Bitboard& getRankAttacks(const Square& square, const Bitboard& occupied) {
-  return rankAttacks[getRankBlockPattern(occupied, square)][square];
+  return rankAttacks[square * 128 + getRankBlockPattern(occupied, square)];
 }
 
 const Bitboard& getFileAttacks(const Square& square, const Bitboard& occupied) {
-  return fileAttacks[getFileBlockPattern(occupied, square)][square];
+  return fileAttacks[square * 128 + getFileBlockPattern(occupied, square)];
 }
 const Bitboard& getDiagRightAttacks(const Square& square,
                                     const Bitboard& occupied) {
-  return diagRightAttacks[getDiagRightBlockPattern(occupied, square)][square];
+  return diagRightAttacks[square * 128 +
+                          getDiagRightBlockPattern(occupied, square)];
 }
 const Bitboard& getDiagLeftAttacks(const Square& square,
                                    const Bitboard& occupied) {
-  return diagLeftAttacks[getDiagLeftBlockPattern(occupied, square)][square];
+  return diagLeftAttacks[square * 128 +
+                         getDiagLeftBlockPattern(occupied, square)];
 }
 const Bitboard& getRankMask(const uint32_t& rank) {
   return rankMask[rank];
@@ -340,94 +323,24 @@ const Bitboard& getFileMask(const uint32_t& file) {
   return fileMask[file];
 }
 
-Bitboard moveN(Bitboard bb) {
-  Bitboard out;
-  out[TOP] =
-      ((bb[TOP] << BOARD_DIM) | (bb[MID] >> (2 * BOARD_DIM))) & FULL_REGION;
-  out[MID] =
-      ((bb[MID] << BOARD_DIM) | (bb[BOTTOM] >> (2 * BOARD_DIM))) & FULL_REGION;
-  out[BOTTOM] = (bb[BOTTOM] << BOARD_DIM) & FULL_REGION;
-  return out;
+Bitboard* getRankAttacksPtr() {
+  return rankAttacks.data();
 }
-
-Bitboard moveNE(Bitboard bb) {
-  Bitboard out;
-  out[TOP] = (((bb[TOP] & NOT_RIGHT_FILE) << (BOARD_DIM - 1)) |
-              ((bb[MID] & NOT_RIGHT_FILE) >> (2 * BOARD_DIM + 1))) &
-             FULL_REGION;
-  out[MID] = (((bb[MID] & NOT_RIGHT_FILE) << (BOARD_DIM - 1)) |
-              ((bb[BOTTOM] & NOT_RIGHT_FILE) >> (2 * BOARD_DIM + 1))) &
-             FULL_REGION;
-  out[BOTTOM] =
-      ((bb[BOTTOM] & NOT_RIGHT_FILE) << (BOARD_DIM - 1)) & FULL_REGION;
-  return out;
+Bitboard* getFileAttacksPtr() {
+  return fileAttacks.data();
 }
-
-Bitboard moveE(Bitboard bb) {
-  Bitboard out;
-  out[TOP] = (bb[TOP] & NOT_RIGHT_FILE) >> 1;
-  out[MID] = (bb[MID] & NOT_RIGHT_FILE) >> 1;
-  out[BOTTOM] = (bb[BOTTOM] & NOT_RIGHT_FILE) >> 1;
-  return out;
+Bitboard* getDiagRightAttacksPtr() {
+  return diagRightAttacks.data();
 }
-
-Bitboard moveSE(Bitboard bb) {
-  Bitboard out;
-  out[BOTTOM] = (((bb[BOTTOM] & NOT_RIGHT_FILE) >> (BOARD_DIM + 1)) |
-                 ((bb[MID] & NOT_RIGHT_FILE) << (2 * BOARD_DIM - 1))) &
-                FULL_REGION;
-  out[MID] = (((bb[MID] & NOT_RIGHT_FILE) >> (BOARD_DIM + 1)) |
-              ((bb[TOP] & NOT_RIGHT_FILE) << (2 * BOARD_DIM - 1))) &
-             FULL_REGION;
-  out[TOP] = ((bb[TOP] & NOT_RIGHT_FILE) >> (BOARD_DIM + 1)) & FULL_REGION;
-  return out;
+Bitboard* getDiagLeftAttacksPtr() {
+  return diagLeftAttacks.data();
 }
-
-Bitboard moveS(Bitboard bb) {
-  Bitboard out;
-  out[BOTTOM] =
-      ((bb[BOTTOM] >> BOARD_DIM) | (bb[MID] << (2 * BOARD_DIM))) & FULL_REGION;
-  out[MID] =
-      ((bb[MID] >> BOARD_DIM) | (bb[TOP] << (2 * BOARD_DIM))) & FULL_REGION;
-  out[TOP] = (bb[TOP] >> BOARD_DIM) & FULL_REGION;
-  return out;
+Bitboard* getRankMaskPtr() {
+  return rankMask.data();
 }
-
-Bitboard moveSW(Bitboard bb) {
-  Bitboard out;
-  out[BOTTOM] = (((bb[BOTTOM] & NOT_LEFT_FILE) >> (BOARD_DIM - 1)) |
-                 (bb[MID] << (2 * BOARD_DIM + 1))) &
-                FULL_REGION;
-  out[MID] = (((bb[MID] & NOT_LEFT_FILE) >> (BOARD_DIM - 1)) |
-              (bb[TOP] << (2 * BOARD_DIM + 1))) &
-             FULL_REGION;
-  out[TOP] = ((bb[TOP] & NOT_LEFT_FILE) >> (BOARD_DIM - 1)) & FULL_REGION;
-  return out;
+Bitboard* getFileMaskPtr() {
+  return fileMask.data();
 }
-
-Bitboard moveW(Bitboard bb) {
-  Bitboard out;
-  out[TOP] = (bb[TOP] & NOT_LEFT_FILE) << 1;
-  out[MID] = (bb[MID] & NOT_LEFT_FILE) << 1;
-  out[BOTTOM] = (bb[BOTTOM] & NOT_LEFT_FILE) << 1;
-  return out;
-}
-
-Bitboard moveNW(Bitboard bb) {
-  Bitboard out;
-  out[TOP] = (((bb[TOP] & NOT_LEFT_FILE) << (BOARD_DIM + 1)) |
-              ((bb[MID] & NOT_LEFT_FILE) >> (2 * BOARD_DIM - 1))) &
-             FULL_REGION;
-  out[MID] = (((bb[MID] & NOT_LEFT_FILE) << (BOARD_DIM + 1)) |
-              ((bb[BOTTOM] & NOT_LEFT_FILE) >> (2 * BOARD_DIM - 1))) &
-             FULL_REGION;
-  out[BOTTOM] = ((bb[BOTTOM] & NOT_LEFT_FILE) << (BOARD_DIM + 1)) & FULL_REGION;
-  return out;
-}
-
-Bitboard getFullFile(int fileIdx) {
-  uint32_t region = FIRST_FILE >> fileIdx;
-  return Bitboard(region, region, region);
-}
+}  // namespace CPU
 }  // namespace engine
 }  // namespace shogi

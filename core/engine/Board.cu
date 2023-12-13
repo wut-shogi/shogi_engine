@@ -1,24 +1,18 @@
-#include "Board.h"
 #include <vector>
+#include "Board.h"
 
 namespace shogi {
 namespace engine {
 Board Boards::STARTING_BOARD() {
   InHandLayout inHand;
   inHand.value = 0;
-  static Board b = {{
-                        Bitboards::STARTING_PAWN(),
-                        Bitboards::STARTING_KNIGHT(),
-                        Bitboards::STARTING_SILVER_GENERAL(),
-                        Bitboards::STARTING_GOLD_GENERAL(),
-                        Bitboards::STARTING_KING(),
-                        Bitboards::STARTING_LANCE(),
-                        Bitboards::STARTING_BISHOP(),
-                        Bitboards::STARTING_ROOK(),
-                        Bitboards::STARTING_PROMOTED(),
-                        Bitboards::STARTING_ALL_WHITE(),
-                        Bitboards::STARTING_ALL_BLACK()
-                    },
+  static Board b = {
+      {Bitboards::STARTING_PAWN(), Bitboards::STARTING_LANCE(),
+       Bitboards::STARTING_KNIGHT(), Bitboards::STARTING_SILVER_GENERAL(),
+       Bitboards::STARTING_GOLD_GENERAL(), Bitboards::STARTING_BISHOP(),
+       Bitboards::STARTING_ROOK(), Bitboards::STARTING_KING(),
+       Bitboards::STARTING_PROMOTED(), Bitboards::STARTING_ALL_WHITE(),
+       Bitboards::STARTING_ALL_BLACK()},
       inHand};
   return b;
 }

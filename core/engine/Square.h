@@ -45,15 +45,16 @@ enum Square : int32_t {
   NONE,
 };
 
-inline int squareToRank(Square square) {
+__host__ __device__ inline int squareToRank(Square square) {
   return square / BOARD_DIM;
 }
 
-inline int squareToFile(Square square) {
+__host__ __device__ inline int squareToFile(Square square) {
   return square % BOARD_DIM;
 }
 
-inline Square rankFileToSquare(uint32_t rank, uint32_t file) {
+__host__ __device__ inline Square rankFileToSquare(uint32_t rank,
+                                                   uint32_t file) {
   return static_cast<Square>(rank * BOARD_DIM + file);
 }
 
@@ -68,7 +69,7 @@ enum Region : uint32_t {
   EMPTY_REGION = 0,
   FULL_REGION = 134217727,
 };
-inline Region squareToRegion(Square square) {
+__host__ __device__ inline Region squareToRegion(Square square) {
   return (Region)(square / REGION_SIZE);
 }
 

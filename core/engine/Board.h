@@ -8,7 +8,7 @@ namespace engine {
 struct Board {
   Bitboard bbs[BB::Type::SIZE];
   InHandLayout inHand;
-  Board() {}
+  __host__ __device__ Board() {}
 
   Board(std::array<Bitboard, BB::Type::SIZE>&& bbs, InHandLayout inHand)
       : inHand(inHand) {
@@ -134,14 +134,10 @@ struct Board {
     return result;
   }
 
-  Bitboard& operator[](BB::Type idx) { return bbs[idx]; }
+  __host__ __device__ Bitboard& operator[](BB::Type idx) { return bbs[idx]; }
 
-  const Bitboard& operator[](BB::Type idx) const { return bbs[idx]; }
-
-  Board& operator=(const Board& board) {
-    std::memcpy(this->bbs, board.bbs, sizeof(this->bbs));
-    inHand.value = board.inHand.value;
-    return *this;
+  __host__ __device__ const Bitboard& operator[](BB::Type idx) const {
+    return bbs[idx];
   }
 };
 

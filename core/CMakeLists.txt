@@ -9,17 +9,21 @@ set(headerFiles
     engine/MoveGenHelpers.h
     engine/Rules.h
     engine/Square.h
+    engine/cpuInterface.h
+    engine/gpuInterface.h
 )
 
 set(sourceFiles
-    engine/GameTree.cpp
-    engine/Bitboard.cpp
-    engine/Board.cpp
-    engine/engine.cpp
-    engine/game.cpp
-    engine/MoveGen.cpp
-    engine/MoveGenHelpers.cpp
-
+    engine/GameTree.cu
+    engine/Bitboard.cu
+    engine/Board.cu
+    engine/engine.cu
+    engine/game.cu
+    engine/MoveGen.cu
+    engine/MoveGenHelpers.cu
+    engine/kernels.cu
+    engine/cpuInterface.cu
+    engine/gpuInterface.cu
 )
 
 set(dllFiles

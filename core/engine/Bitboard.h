@@ -1,4 +1,6 @@
 #pragma once
+#define __CUDACC__
+#include <device_functions.h>
 #include <array>
 #include <bit>
 #include <bitset>
@@ -9,17 +11,23 @@
 namespace shogi {
 namespace engine {
 
+struct Move {
+  uint16_t from : 7;
+  uint16_t to : 7;
+  uint16_t promotion : 1;
+};
+
 namespace BB {
 enum Type {
   BEGIN = 0,
   PAWN = 0,
+  LANCE,
   KNIGHT,
   SILVER_GENERAL,
   GOLD_GENERAL,
-  KING,
-  LANCE,
   BISHOP,
   ROOK,
+  KING,
 
   PROMOTED,
 
@@ -55,7 +63,7 @@ enum PieceValue : int16_t {
   MATE = 30000
 };
 
-inline uint32_t isBitSet(uint32_t region, int bit) {
+__host__ __device__ inline uint32_t isBitSet(uint32_t region, int bit) {
   return (region & (1 << bit)) >> bit;
 }
 
@@ -79,15 +87,17 @@ union InHandLayout {
   uint64_t value;
   PieceNumber pieceNumber;
 
-  InHandLayout() { value = 0; }
+  __host__ __device__ InHandLayout() { value = 0; }
 };
 
 struct Bitboard {
   uint32_t bb[3];
-  Bitboard() : bb{0, 0, 0} {}
-  Bitboard(uint32_t region1, uint32_t region2, uint32_t region3)
+  __host__ __device__ Bitboard() : bb{0, 0, 0} {}
+  __host__ __device__ Bitboard(uint32_t region1,
+                               uint32_t region2,
+                               uint32_t region3)
       : bb{region1, region2, region3} {}
-  Bitboard(std::array<bool, BOARD_SIZE>& mat) {
+  __host__ Bitboard(std::array<bool, BOARD_SIZE>& mat) {
     for (int bbIdx = 0; bbIdx < REGION_DIM; bbIdx++) {
       bb[bbIdx] = 0;
       for (int i = 0; i < REGION_SIZE; i++) {
@@ -97,7 +107,7 @@ struct Bitboard {
       }
     }
   }
-  Bitboard(std::array<bool, BOARD_SIZE>&& mat) {
+  __host__ Bitboard(std::array<bool, BOARD_SIZE>&& mat) {
     for (int bbIdx = 0; bbIdx < REGION_DIM; bbIdx++) {
       bb[bbIdx] = 0;
       for (int i = 0; i < REGION_SIZE; i++) {
@@ -108,14 +118,16 @@ struct Bitboard {
     }
   }
 
-  explicit Bitboard(const Square square) : bb{0, 0, 0} {
+  __host__ __device__ Bitboard(const Square square) : bb{0, 0, 0} {
     Region region = squareToRegion(square);
     bb[region] = 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
   }
 
-  uint32_t& operator[](Region region) { return bb[region]; }
-  const uint32_t& operator[](Region region) const { return bb[region]; }
-  Bitboard& operator=(const Bitboard& bb) {
+  __host__ __device__ uint32_t& operator[](Region region) { return bb[region]; }
+  __host__ __device__ const uint32_t& operator[](Region region) const {
+    return bb[region];
+  }
+  __host__ __device__ Bitboard& operator=(const Bitboard& bb) {
     Bitboard& thisBB = *this;
     thisBB[TOP] = bb[TOP];
     thisBB[MID] = bb[MID];
@@ -123,45 +135,52 @@ struct Bitboard {
     return thisBB;
   }
 
-  Bitboard& operator&=(const Bitboard& other) {
+  __host__ __device__ Bitboard& operator&=(const Bitboard& other) {
     bb[TOP] &= other[TOP];
     bb[MID] &= other[MID];
     bb[BOTTOM] &= other[BOTTOM];
     return *this;
   }
 
-  Bitboard& operator|=(const Bitboard& other) {
+  __host__ __device__ Bitboard& operator|=(const Bitboard& other) {
     bb[TOP] |= other[TOP];
     bb[MID] |= other[MID];
     bb[BOTTOM] |= other[BOTTOM];
     return *this;
   }
 
-  operator bool() const { return bb[TOP] | bb[MID] | bb[BOTTOM]; }
+  __host__ __device__ operator bool() const {
+    return bb[TOP] | bb[MID] | bb[BOTTOM];
+  }
 
-  bool GetBit(Square square) const {
+  __host__ __device__ bool GetBit(Square square) const {
     Region region = squareToRegion(square);
     int shift = REGION_SIZE - 1 - square % REGION_SIZE;
     return (bb[region] & (1 << shift)) != 0;
   }
 };
 
-inline Bitboard operator&(const Bitboard& BB1, const Bitboard& BB2) {
+__host__ __device__ inline Bitboard operator&(const Bitboard& BB1,
+                                              const Bitboard& BB2) {
   return {BB1[TOP] & BB2[TOP], BB1[MID] & BB2[MID], BB1[BOTTOM] & BB2[BOTTOM]};
 }
 
-inline Bitboard operator|(const Bitboard& BB1, const Bitboard& BB2) {
+__host__ __device__ inline Bitboard operator|(const Bitboard& BB1,
+                                              const Bitboard& BB2) {
   return {BB1[TOP] | BB2[TOP], BB1[MID] | BB2[MID], BB1[BOTTOM] | BB2[BOTTOM]};
 }
 
-inline Bitboard operator~(const Bitboard& bb) {
+__host__ __device__ inline Bitboard operator~(const Bitboard& bb) {
   return {(~bb[TOP]) & FULL_REGION, (~bb[MID]) & FULL_REGION,
           (~bb[BOTTOM]) & FULL_REGION};
 }
 
-inline uint32_t popcount(const Bitboard& bb) {
-  return std::popcount<uint32_t>(bb[TOP]) + std::popcount<uint32_t>(bb[MID]) +
-         std::popcount<uint32_t>(bb[BOTTOM]);
+__host__ inline uint32_t popcount(uint32_t value) {
+  return __popcnt(value);
+}
+
+__device__ inline uint32_t d_popcount(uint32_t value) {
+  return __popc(value);
 }
 
 namespace Bitboards {
@@ -193,11 +212,7 @@ inline void print_BB(Bitboard src) {
   }
 }
 
-inline bool empty(const Bitboard& bb) {
-  return bb[TOP] || bb[MID] || bb[BOTTOM];
-}
-
-inline void setSquare(Bitboard& bb, const Square square) {
+__host__ __device__ inline void setSquare(Bitboard& bb, const Square square) {
   Region regionIdx = squareToRegion(square);
   bb[regionIdx] |= 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
 }
@@ -212,6 +227,8 @@ inline int ffs_host(uint32_t value) {
                                                  0x077CB531U)) >>
                                      27];
 }
+
+
 struct BitboardIterator {
  private:
   Bitboard bitboard;
@@ -221,13 +238,13 @@ struct BitboardIterator {
   uint32_t squareOffset;
 
  public:
-  void Init(const Bitboard& bb) {
+  __host__ __device__ void Init(const Bitboard& bb) {
     bitboard = bb;
     currentRegion = TOP;
     squareOffset = 26;
     occupied = false;
   }
-  bool Next() {
+  __host__ bool Next() {
     while (bitboard[currentRegion] == 0) {
       if (currentRegion != BOTTOM) {
         currentRegion = static_cast<Region>(currentRegion + 1);
@@ -241,11 +258,23 @@ struct BitboardIterator {
     return true;
   }
 
-  Square GetCurrentSquare() {
-    return static_cast<Square>(squareOffset - bitPos);
+  __device__ bool d_Next() {
+    while (bitboard[currentRegion] == 0) {
+      if (currentRegion != BOTTOM) {
+        currentRegion = static_cast<Region>(currentRegion + 1);
+        squareOffset += REGION_SIZE;
+      } else {
+        return false;
+      }
+    }
+    bitPos = __ffs(bitboard[currentRegion]) - 1;
+    bitboard[currentRegion] &= ~(1 << bitPos);
+    return true;
   }
 
-  bool IsCurrentSquareOccupied() { return occupied; };
+  __host__ __device__ Square GetCurrentSquare() {
+    return static_cast<Square>(squareOffset - bitPos);
+  }
 };
 }  // namespace engine
 }  // namespace shogi
