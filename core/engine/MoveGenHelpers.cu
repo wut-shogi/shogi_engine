@@ -40,7 +40,7 @@ uint32_t getDiagRightBlockPattern(const Bitboard& occupied, Square square) {
       8, 17, 26, 35, 44, 53, 62, 71, 80,
   };
   uint32_t result = 0;
-  int len = startingSquare[square] > 9 ? 7 - startingSquare[square] / 9
+  int len = startingSquare[square] >= 9 ? 7 - startingSquare[square] / 9
                                        : startingSquare[square] - 1;
   for (int i = 0; i < len; i++) {
     result += occupied.GetBit(
@@ -63,7 +63,7 @@ uint32_t getDiagLeftBlockPattern(const Bitboard& occupied, Square square) {
       72, 63, 54, 45, 36, 27, 18, 9, 0,
   };
   uint32_t result = 0;
-  int len = startingSquare[square] > 9 ? 7 - startingSquare[square] / 9
+  int len = startingSquare[square] >= 9 ? 7 - startingSquare[square] / 9
                                        : 7 - startingSquare[square] % 9;
   for (int i = 0; i < len; i++) {
     result += occupied.GetBit(

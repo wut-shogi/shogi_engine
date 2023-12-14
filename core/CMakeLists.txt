@@ -28,7 +28,7 @@ set(sourceFiles
 
 set(dllFiles
     ../include/shogi_engine.h
-    engine/shogi_engine.cpp
+    engine/shogi_engine.cu
 )
 
 add_library(shogi_engine_core STATIC

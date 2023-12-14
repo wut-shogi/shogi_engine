@@ -18,18 +18,17 @@ class GameTree {
   }
   Move FindBestMove();
 
+  static std::vector<Move> GetAllMovesFrom(const Board& board, bool isWhite);
+
   int16_t SearchNode(TreeNode& node);
 
  private:
   Board m_startingBoard;
   bool m_startingIsWhite;
-  /* Board* m_currentBoards;
-   uint32_t boardsLength;*/
   Bitboard* m_validMoves;
   Bitboard* m_attackedByEnemy;
-  // Board* m_nextBoards;
-  uint32_t m_maxProcessedSize = 10000000;
-  uint32_t m_minBoardsGPU = UINT32_MAX;
+  uint32_t m_maxProcessedSize = 10000;
+  uint32_t m_minBoardsGPU = 10000;
   uint32_t m_maxDepth;
   std::vector<uint32_t> positionsSearched;
 };

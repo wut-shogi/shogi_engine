@@ -1,9 +1,9 @@
 #include <thrust/device_vector.h>
+#include <thrust/extrema.h>
 #include <thrust/host_vector.h>
 #include "GameTree.h"
 #include "cpuInterface.h"
 #include "gpuInterface.h"
-#include <thrust/extrema.h>
 
 namespace shogi {
 namespace engine {
@@ -14,21 +14,34 @@ struct TreeNode {
   thrust::host_vector<uint32_t> moveToBoardIdx;
   bool isWhite;
   uint32_t depth;
+  TreeNode() {}
+  TreeNode(const Board& board, bool isWhite, uint32_t depth)
+      : isWhite(isWhite), depth(depth) {
+    boards = {board};
+  }
+  static TreeNode Root(const Board& board,
+                       bool isWhite,
+                       uint32_t maxDepth,
+                       thrust::host_vector<Board>& moveBoards);
 };
 
-void ConstructNodeMovesCPU(TreeNode& node) {
+bool ConstructNodeMovesCPU(TreeNode& node) {
   node.moveOffsets.resize(node.boards.size() + 1);
   thrust::host_vector<Bitboard> validMoves(node.boards.size());
   thrust::host_vector<Bitboard> attackedByEnemy(node.boards.size());
+  thrust::host_vector<Bitboard> pinned(node.boards.size());
+  bool isMate = false;
   if (node.isWhite) {
     CPU::countWhiteMoves(node.boards.data(), node.boards.size(),
                          validMoves.data(), attackedByEnemy.data(),
-                         node.moveOffsets.data() + 1);
+                         pinned.data(), node.moveOffsets.data() + 1, &isMate);
   } else {
     CPU::countBlackMoves(node.boards.data(), node.boards.size(),
                          validMoves.data(), attackedByEnemy.data(),
-                         node.moveOffsets.data() + 1);
+                         pinned.data(), node.moveOffsets.data() + 1, &isMate);
   }
+  if (isMate)
+    return true;
   CPU::prefixSum(node.moveOffsets.data(), node.moveOffsets.size());
   uint32_t movesCount = node.moveOffsets.back();
   node.moves.resize(movesCount);
@@ -36,27 +49,34 @@ void ConstructNodeMovesCPU(TreeNode& node) {
   if (node.isWhite) {
     CPU::generateWhiteMoves(node.boards.data(), node.boards.size(),
                             validMoves.data(), attackedByEnemy.data(),
-                            node.moveOffsets.data(), node.moves.data(),
-                            node.moveToBoardIdx.data());
+                            pinned.data(), node.moveOffsets.data(),
+                            node.moves.data(), node.moveToBoardIdx.data());
   } else {
     CPU::generateBlackMoves(node.boards.data(), node.boards.size(),
                             validMoves.data(), attackedByEnemy.data(),
-                            node.moveOffsets.data(), node.moves.data(),
-                            node.moveToBoardIdx.data());
+                            pinned.data(), node.moveOffsets.data(),
+                            node.moves.data(), node.moveToBoardIdx.data());
   }
+  return false;
 }
 
-void ConstructNodeMovesGPU(TreeNode& node) {
+bool ConstructNodeMovesGPU(TreeNode& node) {
   thrust::device_vector<uint32_t> moveOffsets(node.boards.size() + 1);
   thrust::device_vector<Bitboard> validMoves(node.boards.size());
   thrust::device_vector<Bitboard> attackedByEnemy(node.boards.size());
+  thrust::device_vector<Bitboard> pinned(node.boards.size());
   thrust::device_vector<Board> boards = node.boards;
+  thrust::device_vector<bool> isMate(1);
   if (node.isWhite) {
     GPU::countWhiteMoves(boards.data(), boards.size(), validMoves.data(),
-                         attackedByEnemy.data(), moveOffsets.data() + 1);
+                         attackedByEnemy.data(), pinned.data(), moveOffsets.data() + 1, isMate.data());
   } else {
     GPU::countBlackMoves(boards.data(), boards.size(), validMoves.data(),
-                         attackedByEnemy.data(), moveOffsets.data() + 1);
+                         attackedByEnemy.data(), pinned.data(), moveOffsets.data() + 1, isMate.data());
+  }
+  thrust::host_vector<bool> isMateHost = isMate;
+  if (isMate.front()) {
+    return true;
   }
   GPU::prefixSum(moveOffsets.data(), moveOffsets.size());
   uint32_t movesCount;
@@ -65,16 +85,17 @@ void ConstructNodeMovesGPU(TreeNode& node) {
   thrust::device_vector<uint32_t> moveToBoardIdx(movesCount);
   if (node.isWhite) {
     GPU::generateWhiteMoves(boards.data(), boards.size(), validMoves.data(),
-                            attackedByEnemy.data(), moveOffsets.data(),
+                            attackedByEnemy.data(), pinned.data(), moveOffsets.data(),
                             moves.data(), moveToBoardIdx.data());
   } else {
     GPU::generateBlackMoves(boards.data(), boards.size(), validMoves.data(),
-                            attackedByEnemy.data(), moveOffsets.data(),
+                            attackedByEnemy.data(), pinned.data(), moveOffsets.data(),
                             moves.data(), moveToBoardIdx.data());
   }
   node.moves = moves;
   node.moveOffsets = moveOffsets;
   node.moveToBoardIdx = moveToBoardIdx;
+  return false;
 }
 
 void GenerateNewNodeCPU(TreeNode& node,
@@ -119,32 +140,45 @@ void GenerateNewNodeGPU(TreeNode& node,
   newNode.boards = newBoards;
 }
 
-int16_t EvaluateMovesCPU(thrust::host_vector<Board> boards) {
+int16_t EvaluateMovesCPU(thrust::host_vector<Board> boards, bool isWhite) {
   thrust::host_vector<int16_t> values(boards.size());
   CPU::evaluateBoards(boards.data(), boards.size(), values.data());
-  return *thrust::max_element(thrust::host, values.data(),
-                             values.data() + values.size());
+  if (isWhite) {
+    return *thrust::min_element(thrust::host, values.data(),
+                                values.data() + values.size());
+  } else {
+    return *thrust::max_element(thrust::host, values.data(),
+                                values.data() + values.size());
+  }
 }
 
-int16_t EvaluateMovesGPU(thrust::host_vector<Board> boards) {
+int16_t EvaluateMovesGPU(thrust::host_vector<Board> boards, bool isWhite) {
   thrust::device_vector<Board> d_boards = boards;
   thrust::device_vector<int16_t> values(boards.size());
   GPU::evaluateBoards(d_boards.data(), d_boards.size(), values.data());
-  return *thrust::max_element(thrust::device, values.data(),
-                              values.data() + values.size());
+  if (isWhite) {
+    return *thrust::min_element(thrust::device, values.data(),
+                                values.data() + values.size());
+  } else {
+    return *thrust::max_element(thrust::device, values.data(),
+                                values.data() + values.size());
+  }
 }
 
 int16_t GameTree::SearchNode(TreeNode& node) {
   positionsSearched[node.depth] += node.boards.size();
   if (node.depth == 0) {
     return (node.boards.size() >= m_minBoardsGPU
-                ? EvaluateMovesGPU(node.boards)
-                : EvaluateMovesCPU(node.boards));
+                ? EvaluateMovesGPU(node.boards, node.isWhite)
+                : EvaluateMovesCPU(node.boards, node.isWhite));
   }
-  node.boards.size() >= m_minBoardsGPU ? ConstructNodeMovesGPU(node)
-                                       : ConstructNodeMovesCPU(node);
+  if (node.boards.size() >= m_minBoardsGPU ? ConstructNodeMovesGPU(node)
+                                           : ConstructNodeMovesCPU(node)) {
+    return (node.isWhite ? -(PieceValue::MATE + node.depth)
+                         : PieceValue::MATE + node.depth);
+  }
   uint32_t movesProcessed = 0;
-  thrust::host_vector<int16_t> values(
+  std::vector<int16_t> values(
       std::ceil(node.moves.size() / (double)m_maxProcessedSize));
   int idx = 0;
   while (movesProcessed < node.moves.size()) {
@@ -158,37 +192,65 @@ int16_t GameTree::SearchNode(TreeNode& node) {
     idx++;
     movesProcessed += movesToProcess;
   }
-  return *std::max_element(values.begin(), values.end());
+  if (node.isWhite)
+    return *std::max_element(values.begin(), values.end());
+  else
+    return *std::min_element(values.begin(), values.end());
 }
 
 Move GameTree::FindBestMove() {
+  positionsSearched.resize(m_maxDepth);
   GPU::initLookUpArrays();
-  TreeNode root;
-  root.isWhite = m_startingIsWhite;
-  root.depth = m_maxDepth;
-  root.boards = {m_startingBoard};
-  positionsSearched = std::vector<uint32_t>(m_maxDepth + 1, 0);
-  ConstructNodeMovesCPU(root);
-  TreeNode avaliableMoves;
-  GenerateNewNodeCPU(root, avaliableMoves, root.moves.size(), 0);
-  int16_t maxVal = INT16_MIN;
-  size_t maxIdx = 0;
-  for (int i = 0; i < avaliableMoves.boards.size(); i++) {
-    TreeNode moveRoot;
-    moveRoot.depth = 1;
-    moveRoot.isWhite = avaliableMoves.isWhite;
-    moveRoot.boards = {avaliableMoves.boards[i]};
-    int16_t moveValue = SearchNode(moveRoot);
-    if (moveValue > maxVal) {
-      maxVal = moveValue;
-      maxIdx = i;
-    }
+  thrust::host_vector<Board> moveBoards;
+  TreeNode root = TreeNode::Root(m_startingBoard, m_startingIsWhite, m_maxDepth,
+                                 moveBoards);
+  std::vector<int16_t> moveValues(root.moves.size());
+  for (int i = 0; i < moveBoards.size(); i++) {
+    TreeNode node(moveBoards[i], !root.isWhite, root.depth - 1);
+    moveValues[i] = SearchNode(node);
   }
-  for (int i = m_maxDepth; i >= 0; i--) {
+  int bestMoveIdx = 0;
+  if (root.isWhite) {
+    auto elem = std::max_element(moveValues.begin(), moveValues.end());
+    bestMoveIdx = elem - moveValues.begin();
+  } else {
+    auto elem = std::min_element(moveValues.begin(), moveValues.end());
+    bestMoveIdx = elem - moveValues.begin();
+  }
+  for (int i = m_maxDepth - 1; i >= 0; i--) {
     std::cout << "Positions on depth " << i << " : " << positionsSearched[i]
               << std::endl;
   }
-  return root.moves[maxIdx];
+  return root.moves[bestMoveIdx];
+}
+
+TreeNode TreeNode::Root(const Board& board,
+                        bool isWhite,
+                        uint32_t maxDepth,
+                        thrust::host_vector<Board>& moveBoards) {
+  TreeNode root;
+  root.boards = {board};
+  root.isWhite = isWhite;
+  root.depth = maxDepth;
+  ConstructNodeMovesCPU(root);
+  moveBoards.resize(root.moves.size());
+  if (isWhite) {
+    CPU::generateWhiteBoards(root.moves.data(), root.moves.size(),
+                             root.boards.data(), root.moveToBoardIdx.data(),
+                             moveBoards.data());
+  } else {
+    CPU::generateBlackBoards(root.moves.data(), root.moves.size(),
+                             root.boards.data(), root.moveToBoardIdx.data(),
+                             moveBoards.data());
+  }
+  return root;
+}
+
+std::vector<Move> GameTree::GetAllMovesFrom(const Board& board, bool isWhite) {
+  TreeNode node(board, isWhite, 1);
+  ConstructNodeMovesCPU(node);
+  std::vector<Move> moves(node.moves.begin(), node.moves.end());
+  return moves;
 }
 }  // namespace engine
 }  // namespace shogi

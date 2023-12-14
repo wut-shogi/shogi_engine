@@ -1,9 +1,9 @@
 #include <device_launch_parameters.h>
+#include <stdio.h>
 #include <thrust/execution_policy.h>
 #include <thrust/scan.h>
 #include "MoveGenHelpers.h"
 #include "gpuInterface.h"
-#include <stdio.h>
 
 namespace shogi {
 namespace engine {
@@ -99,7 +99,8 @@ int initLookUpArrays() {
 }
 
 __device__ uint32_t getDiagRightBlockPattern(const Bitboard& occupied,
-                                             Square square, LookUpTables& lookUpTables) {
+                                             Square square,
+                                             LookUpTables& lookUpTables) {
   uint32_t result = 0;
   uint32_t startingSquare = lookUpTables.startSqDiagRight[square];
   int len = startingSquare > 9 ? 7 - startingSquare / 9 : startingSquare - 1;
@@ -124,8 +125,8 @@ __device__ uint32_t getDiagLeftBlockPattern(const Bitboard& occupied,
   return result;
 }
 
-__device__ const Bitboard& getRankAttacks(LookUpTables& lookUpTables, const
-                                              Square& square,
+__device__ const Bitboard& getRankAttacks(LookUpTables& lookUpTables,
+                                          const Square& square,
                                           const Bitboard& occupied) {
   return lookUpTables
       .rankAttacks[square * 128 + getRankBlockPattern(occupied, square)];
@@ -140,14 +141,16 @@ __device__ const Bitboard& getFileAttacks(LookUpTables& lookUpTables,
 __device__ const Bitboard& getDiagRightAttacks(LookUpTables& lookUpTables,
                                                const Square& square,
                                                const Bitboard& occupied) {
-  return lookUpTables.diagRightAttacks[square * 128 +
-                                  getDiagRightBlockPattern(occupied, square, lookUpTables)];
+  return lookUpTables
+      .diagRightAttacks[square * 128 + getDiagRightBlockPattern(
+                                           occupied, square, lookUpTables)];
 }
 __device__ const Bitboard& getDiagLeftAttacks(LookUpTables& lookUpTables,
                                               const Square& square,
                                               const Bitboard& occupied) {
-  return lookUpTables.diagLeftAttacks[square * 128 +
-                                 getDiagLeftBlockPattern(occupied, square, lookUpTables)];
+  return lookUpTables
+      .diagLeftAttacks[square * 128 +
+                       getDiagLeftBlockPattern(occupied, square, lookUpTables)];
 }
 __device__ const Bitboard& getRankMask(LookUpTables& lookUpTables,
                                        const uint32_t& rank) {
@@ -167,7 +170,10 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
                                       uint32_t inBoardsLength,
                                       Bitboard* outValidMoves,
                                       Bitboard* outAttackedByEnemy,
-                                      uint32_t* outMovesOffset, GPU::LookUpTables lookUpTables ) {
+                                      Bitboard* outPinned,
+                                      uint32_t* outMovesOffset,
+                                      bool* isMate,
+                                      GPU::LookUpTables lookUpTables) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= inBoardsLength)
     return;
@@ -232,17 +238,19 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
   // Lance
   {
     pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] & notPromoted;
-    checkingPieces |= GPU::getFileAttacks(lookUpTables,kingSquare, occupied) &
-                      ~GPU::getRankMask(lookUpTables,squareToRank(kingSquare)) & pieces;
+    checkingPieces |=
+        GPU::getFileAttacks(lookUpTables, kingSquare, occupied) &
+        ~GPU::getRankMask(lookUpTables, squareToRank(kingSquare)) & pieces;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
-      attacksFull = GPU::getFileAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getFileAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = GPU::getRankMask(lookUpTables,squareToRank(square));
+      mask = GPU::getRankMask(lookUpTables, squareToRank(square));
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::ALL_WHITE];
-        attacks = GPU::getFileAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getFileAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -255,22 +263,24 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
   // Rook and dragon
   {
     pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK];
-    checkingPieces |= (GPU::getRankAttacks(lookUpTables,kingSquare, occupied) |
-                       GPU::getFileAttacks(lookUpTables,kingSquare, occupied)) &
-                      pieces;
+    checkingPieces |=
+        (GPU::getRankAttacks(lookUpTables, kingSquare, occupied) |
+         GPU::getFileAttacks(lookUpTables, kingSquare, occupied)) &
+        pieces;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
       // Check if king is in check without white pieces
       // We have to check all 4 directions
       // left-right
-      attacksFull = GPU::getRankAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getRankAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = GPU::getFileMask(lookUpTables,squareToFile(square));
+      mask = GPU::getFileMask(lookUpTables, squareToFile(square));
       // left
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-        attacks = GPU::getRankAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getRankAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -280,7 +290,8 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
       // right
       if (!(attacksFull & king & ~mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-        attacks = GPU::getRankAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getRankAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & ~mask) {
           pinned |= potentialPin;
         }
@@ -288,13 +299,14 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
         slidingChecksPaths |= attacksFull & ~mask;
       }
       // up-down
-      attacksFull = GPU::getFileAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getFileAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = GPU::getRankMask(lookUpTables,squareToRank(square));
+      mask = GPU::getRankMask(lookUpTables, squareToRank(square));
       // up
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-        attacks = GPU::getFileAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getFileAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -304,7 +316,8 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
       // down
       if (!(attacksFull & king & ~mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-        attacks = GPU::getFileAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getFileAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & ~mask) {
           pinned |= potentialPin;
         }
@@ -317,23 +330,25 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
   // Bishop and horse pins
   {
     pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK];
-    checkingPieces |= (GPU::getDiagRightAttacks(lookUpTables,kingSquare, occupied) |
-                       GPU::getDiagLeftAttacks(lookUpTables,kingSquare, occupied)) &
-                      pieces;
+    checkingPieces |=
+        (GPU::getDiagRightAttacks(lookUpTables, kingSquare, occupied) |
+         GPU::getDiagLeftAttacks(lookUpTables, kingSquare, occupied)) &
+        pieces;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
       // Check if king is in check without white pieces
       // We have to check all 4 directions
       // right diag
-      attacksFull = GPU::getDiagRightAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getDiagRightAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = ~GPU::getFileMask(lookUpTables,squareToFile(square)) &
-             GPU::getRankMask(lookUpTables,squareToRank(square));
+      mask = ~GPU::getFileMask(lookUpTables, squareToFile(square)) &
+             GPU::getRankMask(lookUpTables, squareToRank(square));
       // SW
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-        attacks = GPU::getDiagRightAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks = GPU::getDiagRightAttacks(lookUpTables, square,
+                                           occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -343,7 +358,8 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
       // NE
       if (!(attacksFull & king & ~mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-        attacks = GPU::getDiagRightAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks = GPU::getDiagRightAttacks(lookUpTables, square,
+                                           occupied & ~potentialPin);
         if (attacks & king & ~mask) {
           pinned |= potentialPin;
         }
@@ -351,14 +367,15 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
         slidingChecksPaths |= attacksFull & ~mask;
       }
       // left diag
-      attacksFull = GPU::getDiagLeftAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getDiagLeftAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = GPU::getFileMask(lookUpTables,squareToFile(square)) &
-             GPU::getRankMask(lookUpTables,squareToRank(square));
+      mask = GPU::getFileMask(lookUpTables, squareToFile(square)) &
+             GPU::getRankMask(lookUpTables, squareToRank(square));
       // NW
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-        attacks = GPU::getDiagLeftAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks = GPU::getDiagLeftAttacks(lookUpTables, square,
+                                          occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -368,7 +385,8 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
       // SE
       if (!(attacksFull & king & ~mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-        attacks = GPU::getDiagLeftAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks = GPU::getDiagLeftAttacks(lookUpTables, square,
+                                          occupied & ~potentialPin);
         if (attacks & king & ~mask) {
           pinned |= potentialPin;
         }
@@ -386,11 +404,17 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
   moves = moveNE(king) | moveN(king) | moveNW(king) | moveE(king) |
           moveW(king) | moveSE(king) | moveS(king) | moveSW(king);
   moves &= ~attacked & ~board[BB::Type::ALL_WHITE];
-  numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                   d_popcount(moves[BOTTOM]);
+  numberOfMoves +=
+      d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
 
   Bitboard validMoves;
-  if (numberOfCheckingPieces == 1) {
+  // If more then one piece is checking the king and king cannot move its mate
+  if (numberOfCheckingPieces > 1) {
+    if (numberOfMoves == 0) {
+      *isMate = true;
+      return;
+    }
+  } else if (numberOfCheckingPieces == 1) {
     // if king is checked by exactly one piece legal moves can also be block
     // sliding check or capture a checking piece
     validMoves = checkingPieces | (slidingChecksPaths & ~king);
@@ -402,21 +426,23 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
 
   outValidMoves[index] = validMoves;
   outAttackedByEnemy[index] = attacked;
+  outPinned[index] = pinned;
 
   // Pawn moves
   {
-    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     moves = moveS(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves +=
-        d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-        d_popcount(moves[BOTTOM] & ~BOTTOM_RANK) * 2 +  // promotions
-        d_popcount(moves[BOTTOM] & BOTTOM_RANK);        // forced promotion
+    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
+                     d_popcount(moves[BOTTOM] & ~BOTTOM_RANK) * 2 +  // promotions
+                     d_popcount(moves[BOTTOM] & BOTTOM_RANK);  // forced promotion
   }
 
   // Knight moves
   {
-    pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     moves = moveS(moveSE(pieces)) & validMoves;
     ourAttacks |= moves;
     numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
@@ -431,8 +457,8 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
 
   // SilverGenerals moves
   {
-    pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_WHITE] &
-             notPromoted;
+    pieces = ~pinned & board[BB::Type::SILVER_GENERAL] &
+             board[BB::Type::ALL_WHITE] & notPromoted;
     moves = moveS(pieces) & validMoves;
     ourAttacks |= moves;
     numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
@@ -463,45 +489,48 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
 
   // GoldGenerals moves
   {
-    pieces = (board[BB::Type::GOLD_GENERAL] |
+    pieces = ~pinned &
+             (board[BB::Type::GOLD_GENERAL] |
               ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                 board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                board[BB::Type::PROMOTED])) &
              board[BB::Type::ALL_WHITE];
     moves = moveS(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveSE(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveSW(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveE(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveW(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveN(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
   }
 
   // Lance moves
   {
-    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
-      moves = GPU::getFileAttacks(lookUpTables,square, occupied) &
-              ~GPU::getRankMask(lookUpTables,squareToRank(square)) & validMoves;
+      moves = GPU::getFileAttacks(lookUpTables, square, occupied) &
+              ~GPU::getRankMask(lookUpTables, squareToRank(square)) &
+              validMoves;
       ourAttacks |= moves;
       numberOfMoves +=
           d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
@@ -512,12 +541,13 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
 
   // Bishop moves
   {
-    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
-      moves = (GPU::getDiagRightAttacks(lookUpTables,square, occupied) |
-               GPU::getDiagLeftAttacks(lookUpTables,square, occupied)) &
+      moves = (GPU::getDiagRightAttacks(lookUpTables, square, occupied) |
+               GPU::getDiagLeftAttacks(lookUpTables, square, occupied)) &
               validMoves;
       ourAttacks |= moves;
       if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
@@ -525,21 +555,21 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
                           d_popcount(moves[BOTTOM])) *
                          2;
       } else {
-        numberOfMoves +=
-            d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-            d_popcount(moves[BOTTOM]) * 2;  // end in promotion Zone
+        numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
+                         d_popcount(moves[BOTTOM]) * 2;  // end in promotion Zone
       }
     }
   }
 
   // Rook moves
   {
-    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
-      moves = (GPU::getRankAttacks(lookUpTables,square, occupied) |
-               GPU::getFileAttacks(lookUpTables,square, occupied)) &
+      moves = (GPU::getRankAttacks(lookUpTables, square, occupied) |
+               GPU::getFileAttacks(lookUpTables, square, occupied)) &
               validMoves;
       ourAttacks |= moves;
       if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
@@ -547,24 +577,23 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
                           d_popcount(moves[BOTTOM])) *
                          2;
       } else {
-        numberOfMoves +=
-            d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-            d_popcount(moves[BOTTOM]) * 2;  // end in promotion Zone
+        numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
+                         d_popcount(moves[BOTTOM]) * 2;  // end in promotion Zone
       }
     }
   }
 
   // Horse moves
   {
-    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+    pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
              board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
       Bitboard horse = Bitboard(square);
-      moves = (GPU::getDiagRightAttacks(lookUpTables,square, occupied) |
-               GPU::getDiagLeftAttacks(lookUpTables,square, occupied) | moveN(horse) |
-               moveE(horse) | moveS(horse) | moveW(horse)) &
+      moves = (GPU::getDiagRightAttacks(lookUpTables, square, occupied) |
+               GPU::getDiagLeftAttacks(lookUpTables, square, occupied) |
+               moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
               validMoves;
       ourAttacks |= moves;
       numberOfMoves += (d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
@@ -574,16 +603,17 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
 
   // Dragon moves
   {
-    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+    pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
              board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
       Bitboard dragon(square);
-      moves = (GPU::getRankAttacks(lookUpTables,square, occupied) |
-               GPU::getFileAttacks(lookUpTables,square, occupied) | moveNW(dragon) |
-               moveNE(dragon) | moveSE(dragon) | moveSW(dragon)) &
-              validMoves;
+      moves =
+          (GPU::getRankAttacks(lookUpTables, square, occupied) |
+           GPU::getFileAttacks(lookUpTables, square, occupied) |
+           moveNW(dragon) | moveNE(dragon) | moveSE(dragon) | moveSW(dragon)) &
+          validMoves;
       ourAttacks |= moves;
       numberOfMoves += (d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
                         d_popcount(moves[BOTTOM]));
@@ -595,7 +625,7 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
     Bitboard legalDropSpots;
     // Pawns
     if (board.inHand.pieceNumber.WhitePawn > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last rank
       legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
       // Cannot drop to give checkmate
@@ -626,7 +656,7 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
                        d_popcount(legalDropSpots[BOTTOM]);
     }
     if (board.inHand.pieceNumber.WhiteLance > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last rank
       legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
       numberOfMoves += d_popcount(legalDropSpots[TOP]) +
@@ -634,14 +664,14 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
                        d_popcount(legalDropSpots[BOTTOM]);
     }
     if (board.inHand.pieceNumber.WhiteKnight > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last two ranks
       legalDropSpots[BOTTOM] &= TOP_RANK;
       numberOfMoves += d_popcount(legalDropSpots[TOP]) +
                        d_popcount(legalDropSpots[MID]) +
                        d_popcount(legalDropSpots[BOTTOM]);
     }
-    legalDropSpots = ~occupied;
+    legalDropSpots = validMoves & ~occupied;
     numberOfMoves +=
         ((board.inHand.pieceNumber.WhiteSilverGeneral > 0) +
          (board.inHand.pieceNumber.WhiteGoldGeneral > 0) +
@@ -649,6 +679,10 @@ __global__ void countWhiteMovesKernel(Board* inBoards,
          (board.inHand.pieceNumber.WhiteRook > 0)) *
         (d_popcount(legalDropSpots[TOP]) + d_popcount(legalDropSpots[MID]) +
          d_popcount(legalDropSpots[BOTTOM]));
+  }
+  if (numberOfMoves == 0) {
+    *isMate = true;
+    return;
   }
 
   outMovesOffset[index] = numberOfMoves;
@@ -658,7 +692,10 @@ __global__ void countBlackMovesKernel(Board* inBoards,
                                       uint32_t inBoardsLength,
                                       Bitboard* outValidMoves,
                                       Bitboard* outAttackedByEnemy,
-                                      uint32_t* outMovesOffset, GPU::LookUpTables lookUpTables) {
+                                      Bitboard* outPinned,
+                                      uint32_t* outMovesOffset,
+                                      bool* isMate,
+                                      GPU::LookUpTables lookUpTables) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= inBoardsLength)
     return;
@@ -720,21 +757,22 @@ __global__ void countBlackMovesKernel(Board* inBoards,
   iterator.d_Next();
   Square kingSquare = iterator.GetCurrentSquare();
   Bitboard occupied = board[BB::Type::ALL_BLACK] | board[BB::Type::ALL_WHITE];
-
   // Lance
   {
     pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] & notPromoted;
-    checkingPieces |= GPU::getFileAttacks(lookUpTables,kingSquare, occupied) &
-                      GPU::getRankMask(lookUpTables,squareToRank(kingSquare)) & pieces;
+    checkingPieces |= GPU::getFileAttacks(lookUpTables, kingSquare, occupied) &
+                      GPU::getRankMask(lookUpTables, squareToRank(kingSquare)) &
+                      pieces;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
-      attacksFull = GPU::getFileAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getFileAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = ~GPU::getRankMask(lookUpTables,squareToRank(square));
+      mask = ~GPU::getRankMask(lookUpTables, squareToRank(square));
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::ALL_BLACK];
-        attacks = GPU::getFileAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getFileAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -743,25 +781,28 @@ __global__ void countBlackMovesKernel(Board* inBoards,
       }
     }
   }
+
   // Rook and dragon
   {
     pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE];
-    checkingPieces |= (GPU::getRankAttacks(lookUpTables,kingSquare, occupied) |
-                       GPU::getFileAttacks(lookUpTables,kingSquare, occupied)) &
-                      pieces;
+    checkingPieces |=
+        (GPU::getRankAttacks(lookUpTables, kingSquare, occupied) |
+         GPU::getFileAttacks(lookUpTables, kingSquare, occupied)) &
+        pieces;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
       // Check if king is in check without white pieces
       // We have to check all 4 directions
       // left-right
-      attacksFull = GPU::getRankAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getRankAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = GPU::getFileMask(lookUpTables,squareToFile(square));
+      mask = GPU::getFileMask(lookUpTables, squareToFile(square));
       // left
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-        attacks = GPU::getRankAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getRankAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -771,7 +812,8 @@ __global__ void countBlackMovesKernel(Board* inBoards,
       // right
       if (!(attacksFull & king & ~mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-        attacks = GPU::getRankAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getRankAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & ~mask) {
           pinned |= potentialPin;
         }
@@ -779,13 +821,14 @@ __global__ void countBlackMovesKernel(Board* inBoards,
         slidingChecksPaths |= attacksFull & ~mask;
       }
       // up-down
-      attacksFull = GPU::getFileAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getFileAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = GPU::getRankMask(lookUpTables,squareToRank(square));
+      mask = GPU::getRankMask(lookUpTables, squareToRank(square));
       // up
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-        attacks = GPU::getFileAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getFileAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -795,7 +838,8 @@ __global__ void countBlackMovesKernel(Board* inBoards,
       // down
       if (!(attacksFull & king & ~mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-        attacks = GPU::getFileAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks =
+            GPU::getFileAttacks(lookUpTables, square, occupied & ~potentialPin);
         if (attacks & king & ~mask) {
           pinned |= potentialPin;
         }
@@ -808,23 +852,25 @@ __global__ void countBlackMovesKernel(Board* inBoards,
   // Bishop and horse pins
   {
     pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE];
-    checkingPieces |= (GPU::getDiagRightAttacks(lookUpTables,kingSquare, occupied) |
-                       GPU::getDiagLeftAttacks(lookUpTables,kingSquare, occupied)) &
-                      pieces;
+    checkingPieces |=
+        (GPU::getDiagRightAttacks(lookUpTables, kingSquare, occupied) |
+         GPU::getDiagLeftAttacks(lookUpTables, kingSquare, occupied)) &
+        pieces;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
       // Check if king is in check without white pieces
       // We have to check all 4 directions
       // right diag
-      attacksFull = GPU::getDiagRightAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getDiagRightAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = ~GPU::getFileMask(lookUpTables,squareToFile(square)) &
-             GPU::getRankMask(lookUpTables,squareToRank(square));
+      mask = ~GPU::getFileMask(lookUpTables, squareToFile(square)) &
+             GPU::getRankMask(lookUpTables, squareToRank(square));
       // SW
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-        attacks = GPU::getDiagRightAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks = GPU::getDiagRightAttacks(lookUpTables, square,
+                                           occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -834,7 +880,8 @@ __global__ void countBlackMovesKernel(Board* inBoards,
       // NE
       if (!(attacksFull & king & ~mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-        attacks = GPU::getDiagRightAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks = GPU::getDiagRightAttacks(lookUpTables, square,
+                                           occupied & ~potentialPin);
         if (attacks & king & ~mask) {
           pinned |= potentialPin;
         }
@@ -842,14 +889,15 @@ __global__ void countBlackMovesKernel(Board* inBoards,
         slidingChecksPaths |= attacksFull & ~mask;
       }
       // left diag
-      attacksFull = GPU::getDiagLeftAttacks(lookUpTables,square, occupied);
+      attacksFull = GPU::getDiagLeftAttacks(lookUpTables, square, occupied);
       attacked |= attacksFull;
-      mask = GPU::getFileMask(lookUpTables,squareToFile(square)) &
-             GPU::getRankMask(lookUpTables,squareToRank(square));
+      mask = GPU::getFileMask(lookUpTables, squareToFile(square)) &
+             GPU::getRankMask(lookUpTables, squareToRank(square));
       // NW
       if (!(attacksFull & king & mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-        attacks = GPU::getDiagLeftAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks = GPU::getDiagLeftAttacks(lookUpTables, square,
+                                          occupied & ~potentialPin);
         if (attacks & king & mask) {
           pinned |= potentialPin;
         }
@@ -859,7 +907,8 @@ __global__ void countBlackMovesKernel(Board* inBoards,
       // SE
       if (!(attacksFull & king & ~mask)) {
         potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-        attacks = GPU::getDiagLeftAttacks(lookUpTables,square, occupied & ~potentialPin);
+        attacks = GPU::getDiagLeftAttacks(lookUpTables, square,
+                                          occupied & ~potentialPin);
         if (attacks & king & ~mask) {
           pinned |= potentialPin;
         }
@@ -877,10 +926,16 @@ __global__ void countBlackMovesKernel(Board* inBoards,
   moves = moveNE(king) | moveN(king) | moveNW(king) | moveE(king) |
           moveW(king) | moveSE(king) | moveS(king) | moveSW(king);
   moves &= ~attacked & ~board[BB::Type::ALL_BLACK];
-  numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                   d_popcount(moves[BOTTOM]);
+  numberOfMoves +=
+      d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
   Bitboard validMoves;
-  if (numberOfCheckingPieces == 1) {
+  // If more then one piece is checking the king and king cannot move its mate
+  if (numberOfCheckingPieces > 1) {
+    if (numberOfMoves == 0) {
+      *isMate = true;
+      return;
+    }
+  } else if (numberOfCheckingPieces == 1) {
     // if king is checked by exactly one piece legal moves can also be block
     // sliding check or capture a checking piece
     validMoves = checkingPieces | (slidingChecksPaths & ~king);
@@ -892,10 +947,12 @@ __global__ void countBlackMovesKernel(Board* inBoards,
 
   outValidMoves[index] = validMoves;
   outAttackedByEnemy[index] = attacked;
+  outPinned[index] = pinned;
 
   // Pawn moves
   {
-    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     moves = moveN(pieces) & validMoves;
     ourAttacks |= moves;
     numberOfMoves += d_popcount(moves[TOP] & TOP_RANK) +  // forced promotions
@@ -905,24 +962,24 @@ __global__ void countBlackMovesKernel(Board* inBoards,
 
   // Knight moves
   {
-    pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     moves = moveN(moveNE(pieces)) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves +=
-        d_popcount(moves[TOP] & ~BOTTOM_RANK) +     // forced promotions
-        d_popcount(moves[TOP] & BOTTOM_RANK) * 2 +  // promotions
-        d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
+    numberOfMoves += d_popcount(moves[TOP] & ~BOTTOM_RANK) +  // forced promotions
+                     d_popcount(moves[TOP] & BOTTOM_RANK) * 2 +  // promotions
+                     d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveN(moveNW(pieces)) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP] & ~TOP_RANK) +  // forced promotions
+    numberOfMoves += d_popcount(moves[TOP] & ~TOP_RANK) +     // forced promotions
                      d_popcount(moves[TOP] & TOP_RANK) * 2 +  // promotions
                      d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
   }
 
   // SilverGenerals moves
   {
-    pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_BLACK] &
-             notPromoted;
+    pieces = ~pinned & board[BB::Type::SILVER_GENERAL] &
+             board[BB::Type::ALL_BLACK] & notPromoted;
     moves = moveN(pieces) & validMoves;
     ourAttacks |= moves;
     numberOfMoves += d_popcount(moves[TOP]) * 2 +  // promotions
@@ -953,45 +1010,47 @@ __global__ void countBlackMovesKernel(Board* inBoards,
 
   // GoldGenerals moves
   {
-    pieces = (board[BB::Type::GOLD_GENERAL] |
+    pieces = ~pinned &
+             (board[BB::Type::GOLD_GENERAL] |
               ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                 board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                board[BB::Type::PROMOTED])) &
              board[BB::Type::ALL_BLACK];
     moves = moveN(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveNE(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveNW(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveE(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveW(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
     moves = moveS(pieces) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
-                     d_popcount(moves[BOTTOM]);
+    numberOfMoves +=
+        d_popcount(moves[TOP]) + d_popcount(moves[MID]) + d_popcount(moves[BOTTOM]);
   }
 
   // Lance moves
   {
-    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
-      moves = GPU::getFileAttacks(lookUpTables,square, occupied) &
-              GPU::getRankMask(lookUpTables,squareToRank(square)) & validMoves;
+      moves = GPU::getFileAttacks(lookUpTables, square, occupied) &
+              GPU::getRankMask(lookUpTables, squareToRank(square)) & validMoves;
       ourAttacks |= moves;
       numberOfMoves += d_popcount(moves[TOP] & TOP_RANK) +  // forced promotions
                        d_popcount(moves[TOP] & ~TOP_RANK) * 2 +  // promotions
@@ -1001,12 +1060,13 @@ __global__ void countBlackMovesKernel(Board* inBoards,
 
   // Bishop moves
   {
-    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
-      moves = (GPU::getDiagRightAttacks(lookUpTables,square, occupied) |
-               GPU::getDiagLeftAttacks(lookUpTables,square, occupied)) &
+      moves = (GPU::getDiagRightAttacks(lookUpTables, square, occupied) |
+               GPU::getDiagLeftAttacks(lookUpTables, square, occupied)) &
               validMoves;
       ourAttacks |= moves;
       if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
@@ -1022,12 +1082,13 @@ __global__ void countBlackMovesKernel(Board* inBoards,
 
   // Rook moves
   {
-    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
-      moves = (GPU::getRankAttacks(lookUpTables,square, occupied) |
-               GPU::getFileAttacks(lookUpTables,square, occupied)) &
+      moves = (GPU::getRankAttacks(lookUpTables, square, occupied) |
+               GPU::getFileAttacks(lookUpTables, square, occupied)) &
               validMoves;
       ourAttacks |= moves;
       if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
@@ -1043,15 +1104,15 @@ __global__ void countBlackMovesKernel(Board* inBoards,
 
   // Horse moves
   {
-    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+    pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
              board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
       Bitboard horse = Bitboard(square);
-      moves = (GPU::getDiagRightAttacks(lookUpTables,square, occupied) |
-               GPU::getDiagLeftAttacks(lookUpTables,square, occupied) | moveN(horse) |
-               moveE(horse) | moveS(horse) | moveW(horse)) &
+      moves = (GPU::getDiagRightAttacks(lookUpTables, square, occupied) |
+               GPU::getDiagLeftAttacks(lookUpTables, square, occupied) |
+               moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
               validMoves;
       ourAttacks |= moves;
       numberOfMoves += (d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
@@ -1061,16 +1122,17 @@ __global__ void countBlackMovesKernel(Board* inBoards,
 
   // Dragon moves
   {
-    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+    pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
              board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       square = iterator.GetCurrentSquare();
       Bitboard dragon(square);
-      moves = (GPU::getRankAttacks(lookUpTables,square, occupied) |
-               GPU::getFileAttacks(lookUpTables,square, occupied) | moveNW(dragon) |
-               moveNE(dragon) | moveSE(dragon) | moveSW(dragon)) &
-              validMoves;
+      moves =
+          (GPU::getRankAttacks(lookUpTables, square, occupied) |
+           GPU::getFileAttacks(lookUpTables, square, occupied) |
+           moveNW(dragon) | moveNE(dragon) | moveSE(dragon) | moveSW(dragon)) &
+          validMoves;
       ourAttacks |= moves;
       numberOfMoves += (d_popcount(moves[TOP]) + d_popcount(moves[MID]) +
                         d_popcount(moves[BOTTOM]));
@@ -1082,7 +1144,7 @@ __global__ void countBlackMovesKernel(Board* inBoards,
     Bitboard legalDropSpots;
     // Pawns
     if (board.inHand.pieceNumber.BlackPawn > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last rank
       legalDropSpots[TOP] &= ~TOP_RANK;
       // Cannot drop to give checkmate
@@ -1113,7 +1175,7 @@ __global__ void countBlackMovesKernel(Board* inBoards,
                        d_popcount(legalDropSpots[BOTTOM]);
     }
     if (board.inHand.pieceNumber.BlackLance > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last rank
       legalDropSpots[TOP] &= ~TOP_RANK;
       numberOfMoves += d_popcount(legalDropSpots[TOP]) +
@@ -1121,14 +1183,14 @@ __global__ void countBlackMovesKernel(Board* inBoards,
                        d_popcount(legalDropSpots[BOTTOM]);
     }
     if (board.inHand.pieceNumber.BlackKnight > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last two ranks
       legalDropSpots[TOP] &= BOTTOM_RANK;
       numberOfMoves += d_popcount(legalDropSpots[TOP]) +
                        d_popcount(legalDropSpots[MID]) +
                        d_popcount(legalDropSpots[BOTTOM]);
     }
-    legalDropSpots = ~occupied;
+    legalDropSpots = validMoves & ~occupied;
     numberOfMoves +=
         ((board.inHand.pieceNumber.BlackSilverGeneral > 0) +
          (board.inHand.pieceNumber.BlackGoldGeneral > 0) +
@@ -1137,6 +1199,10 @@ __global__ void countBlackMovesKernel(Board* inBoards,
         (d_popcount(legalDropSpots[TOP]) + d_popcount(legalDropSpots[MID]) +
          d_popcount(legalDropSpots[BOTTOM]));
   }
+  if (numberOfMoves == 0) {
+    *isMate = true;
+    return;
+  }
   outMovesOffset[index] = numberOfMoves;
 }
 
@@ -1144,9 +1210,11 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
                                          uint32_t inBoardsLength,
                                          Bitboard* inValidMoves,
                                          Bitboard* inAttackedByEnemy,
+                                         Bitboard* inPinned,
                                          uint32_t* inMovesOffset,
                                          Move* outMoves,
-                                         uint32_t* outMoveToBoardIdx, GPU::LookUpTables lookUpTables) {
+                                         uint32_t* outMoveToBoardIdx,
+                                         GPU::LookUpTables lookUpTables) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= inBoardsLength)
     return;
@@ -1154,15 +1222,18 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
   Board board = inBoards[index];
   Bitboard validMoves = inValidMoves[index];
   Bitboard notPromoted = ~board[BB::Type::PROMOTED];
+  Bitboard pinned = inPinned[index];
   Bitboard pieces, moves, ourAttacks;
   Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
   BitboardIterator movesIterator, iterator;
   Move move;
+  uint32_t movesCount = inMovesOffset[index + 1] - inMovesOffset[index];
   uint32_t movesOffset = inMovesOffset[index];
   uint32_t moveNumber = 0;
   // Pawn moves
   {
-    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     moves = moveS(pieces) & validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
@@ -1189,7 +1260,8 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
   }
   // Knight moves
   {
-    pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     moves = moveS(moveSE(pieces)) & validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
@@ -1240,8 +1312,8 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
 
   // SilverGenerals moves
   {
-    pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_WHITE] &
-             notPromoted;
+    pieces = ~pinned & board[BB::Type::SILVER_GENERAL] &
+             board[BB::Type::ALL_WHITE] & notPromoted;
     moves = moveS(pieces) & validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
@@ -1348,7 +1420,8 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
 
   // GoldGenerals moves
   {
-    pieces = (board[BB::Type::GOLD_GENERAL] |
+    pieces = ~pinned &
+             (board[BB::Type::GOLD_GENERAL] |
               ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                 board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                board[BB::Type::PROMOTED])) &
@@ -1429,12 +1502,15 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
 
   // Lances moves
   {
-    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
-      moves = GPU::getFileAttacks(lookUpTables,static_cast<Square>(move.from), occupied) &
-              ~GPU::getRankMask(lookUpTables,squareToRank(static_cast<Square>(move.from))) &
+      moves = GPU::getFileAttacks(lookUpTables, static_cast<Square>(move.from),
+                                  occupied) &
+              ~GPU::getRankMask(lookUpTables,
+                                squareToRank(static_cast<Square>(move.from))) &
               validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
@@ -1462,14 +1538,16 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
 
   // Bishop moves
   {
-    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
-      moves =
-          (GPU::getDiagRightAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-           GPU::getDiagLeftAttacks(lookUpTables,static_cast<Square>(move.from), occupied)) &
-          validMoves;
+      moves = (GPU::getDiagRightAttacks(
+                   lookUpTables, static_cast<Square>(move.from), occupied) |
+               GPU::getDiagLeftAttacks(
+                   lookUpTables, static_cast<Square>(move.from), occupied)) &
+              validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
       while (movesIterator.d_Next()) {
@@ -1494,12 +1572,15 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
 
   // Rook moves
   {
-    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] & notPromoted;
+    pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
-      moves = (GPU::getRankAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-               GPU::getFileAttacks(lookUpTables,static_cast<Square>(move.from), occupied)) &
+      moves = (GPU::getRankAttacks(lookUpTables, static_cast<Square>(move.from),
+                                   occupied) |
+               GPU::getFileAttacks(lookUpTables, static_cast<Square>(move.from),
+                                   occupied)) &
               validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
@@ -1526,16 +1607,18 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
 
   // Horse moves
   {
-    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+    pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
              board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
-      moves =
-          (GPU::getDiagRightAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-           GPU::getDiagLeftAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-           moveN(pieces) | moveE(pieces) | moveS(pieces) | moveW(pieces)) &
-          validMoves;
+      Bitboard horse(static_cast<Square>(move.from));
+      moves = (GPU::getDiagRightAttacks(
+                   lookUpTables, static_cast<Square>(move.from), occupied) |
+               GPU::getDiagLeftAttacks(
+                   lookUpTables, static_cast<Square>(move.from), occupied) |
+               moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
+              validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
       while (movesIterator.d_Next()) {
@@ -1550,14 +1633,17 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
 
   // Dragon moves
   {
-    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+    pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
              board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
+      Bitboard dragon(static_cast<Square>(move.from));
       moves =
-          (GPU::getRankAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-           GPU::getFileAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
+          (GPU::getRankAttacks(lookUpTables, static_cast<Square>(move.from),
+                               occupied) |
+           GPU::getFileAttacks(lookUpTables, static_cast<Square>(move.from),
+                               occupied) |
            moveNW(pieces) | moveNE(pieces) | moveSE(pieces) | moveSW(pieces)) &
           validMoves;
       ourAttacks |= moves;
@@ -1599,7 +1685,7 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
     Bitboard legalDropSpots;
     // Pawns
     if (board.inHand.pieceNumber.WhitePawn > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last rank
       legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
       // Cannot drop to give checkmate
@@ -1636,23 +1722,9 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
       }
     }
     if (board.inHand.pieceNumber.WhiteLance > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last rank
       legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
-      movesIterator.Init(legalDropSpots);
-      move.from = WHITE_KNIGHT_DROP;
-      while (movesIterator.d_Next()) {
-        move.to = movesIterator.GetCurrentSquare();
-        outMoves[movesOffset + moveNumber] = move;
-
-        outMoveToBoardIdx[movesOffset + moveNumber] = index;
-        moveNumber++;
-      }
-    }
-    if (board.inHand.pieceNumber.WhiteKnight > 0) {
-      legalDropSpots = ~occupied;
-      // Cannot drop on last two ranks
-      legalDropSpots[BOTTOM] &= TOP_RANK;
       movesIterator.Init(legalDropSpots);
       move.from = WHITE_LANCE_DROP;
       while (movesIterator.d_Next()) {
@@ -1663,7 +1735,21 @@ __global__ void generateWhiteMovesKernel(Board* inBoards,
         moveNumber++;
       }
     }
-    legalDropSpots = ~occupied;
+    if (board.inHand.pieceNumber.WhiteKnight > 0) {
+      legalDropSpots = validMoves & ~occupied;
+      // Cannot drop on last two ranks
+      legalDropSpots[BOTTOM] &= TOP_RANK;
+      movesIterator.Init(legalDropSpots);
+      move.from = WHITE_KNIGHT_DROP;
+      while (movesIterator.d_Next()) {
+        move.to = movesIterator.GetCurrentSquare();
+        outMoves[movesOffset + moveNumber] = move;
+
+        outMoveToBoardIdx[movesOffset + moveNumber] = index;
+        moveNumber++;
+      }
+    }
+    legalDropSpots = validMoves & ~occupied;
     movesIterator.Init(legalDropSpots);
     while (movesIterator.d_Next()) {
       if (board.inHand.pieceNumber.WhiteSilverGeneral > 0) {
@@ -1706,6 +1792,7 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
                                          uint32_t inBoardsLength,
                                          Bitboard* inValidMoves,
                                          Bitboard* inAttackedByEnemy,
+                                         Bitboard* inPinned,
                                          uint32_t* inMovesOffset,
                                          Move* outMoves,
                                          uint32_t* outMoveToBoardIdx,
@@ -1717,15 +1804,18 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
   Board board = inBoards[index];
   Bitboard validMoves = inValidMoves[index];
   Bitboard notPromoted = ~board[BB::Type::PROMOTED];
+  Bitboard pinned = inPinned[index];
   Bitboard pieces, moves, ourAttacks;
   Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
   BitboardIterator movesIterator, iterator;
   Move move;
+  uint32_t movesCount = inMovesOffset[index + 1] - inMovesOffset[index];
   uint32_t movesOffset = inMovesOffset[index];
   uint32_t moveNumber = 0;
   // Pawn moves
   {
-    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     moves = moveN(pieces) & validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
@@ -1752,7 +1842,8 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
   }
   // Knight moves
   {
-    pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     moves = moveN(moveNE(pieces)) & validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
@@ -1802,8 +1893,8 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
   }
   // SilverGenerals moves
   {
-    pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_BLACK] &
-             notPromoted;
+    pieces = ~pinned & board[BB::Type::SILVER_GENERAL] &
+             board[BB::Type::ALL_BLACK] & notPromoted;
     moves = moveN(pieces) & validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
@@ -1907,7 +1998,8 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
   }
   // GoldGenerals moves
   {
-    pieces = (board[BB::Type::GOLD_GENERAL] |
+    pieces = ~pinned &
+             (board[BB::Type::GOLD_GENERAL] |
               ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                 board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                board[BB::Type::PROMOTED])) &
@@ -1987,12 +2079,15 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
   }
   // Lances moves
   {
-    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
-      moves = GPU::getFileAttacks(lookUpTables,static_cast<Square>(move.from), occupied) &
-              GPU::getRankMask(lookUpTables,squareToRank(static_cast<Square>(move.from))) &
+      moves = GPU::getFileAttacks(lookUpTables, static_cast<Square>(move.from),
+                                  occupied) &
+              GPU::getRankMask(lookUpTables,
+                               squareToRank(static_cast<Square>(move.from))) &
               validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
@@ -2019,14 +2114,16 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
   }
   // Bishop moves
   {
-    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
-      moves =
-          (GPU::getDiagRightAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-           GPU::getDiagLeftAttacks(lookUpTables,static_cast<Square>(move.from), occupied)) &
-          validMoves;
+      moves = (GPU::getDiagRightAttacks(
+                   lookUpTables, static_cast<Square>(move.from), occupied) |
+               GPU::getDiagLeftAttacks(
+                   lookUpTables, static_cast<Square>(move.from), occupied)) &
+              validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
       while (movesIterator.d_Next()) {
@@ -2050,12 +2147,15 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
   }
   // Rook moves
   {
-    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] & notPromoted;
+    pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+             notPromoted;
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
-      moves = (GPU::getRankAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-               GPU::getFileAttacks(lookUpTables,static_cast<Square>(move.from), occupied)) &
+      moves = (GPU::getRankAttacks(lookUpTables, static_cast<Square>(move.from),
+                                   occupied) |
+               GPU::getFileAttacks(lookUpTables, static_cast<Square>(move.from),
+                                   occupied)) &
               validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
@@ -2081,16 +2181,18 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
   move.promotion = 0;
   // Horse moves
   {
-    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+    pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
              board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
-      moves =
-          (GPU::getDiagRightAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-           GPU::getDiagLeftAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-           moveN(pieces) | moveE(pieces) | moveS(pieces) | moveW(pieces)) &
-          validMoves;
+      Bitboard horse(static_cast<Square>(move.from));
+      moves = (GPU::getDiagRightAttacks(
+                   lookUpTables, static_cast<Square>(move.from), occupied) |
+               GPU::getDiagLeftAttacks(
+                   lookUpTables, static_cast<Square>(move.from), occupied) |
+               moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
+              validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
       while (movesIterator.d_Next()) {
@@ -2104,15 +2206,18 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
   }
   // Dragon moves
   {
-    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+    pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
              board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.d_Next()) {
       move.from = iterator.GetCurrentSquare();
+      Bitboard dragon(static_cast<Square>(move.from));
       moves =
-          (GPU::getRankAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-           GPU::getFileAttacks(lookUpTables,static_cast<Square>(move.from), occupied) |
-           moveNW(pieces) | moveNE(pieces) | moveSE(pieces) | moveSW(pieces)) &
+          (GPU::getRankAttacks(lookUpTables, static_cast<Square>(move.from),
+                               occupied) |
+           GPU::getFileAttacks(lookUpTables, static_cast<Square>(move.from),
+                               occupied) |
+           moveNW(dragon) | moveNE(dragon) | moveSE(dragon) | moveSW(dragon)) &
           validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
@@ -2151,7 +2256,7 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
     Bitboard legalDropSpots;
     // Pawns
     if (board.inHand.pieceNumber.BlackPawn > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last rank
       legalDropSpots[TOP] &= ~TOP_RANK;
       // Cannot drop to give checkmate
@@ -2188,7 +2293,7 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
       }
     }
     if (board.inHand.pieceNumber.BlackLance > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last rank
       legalDropSpots[TOP] &= ~TOP_RANK;
       move.from = BLACK_LANCE_DROP;
@@ -2202,7 +2307,7 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
       }
     }
     if (board.inHand.pieceNumber.BlackKnight > 0) {
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       // Cannot drop on last two ranks
       legalDropSpots[TOP] &= BOTTOM_RANK;
       move.from = BLACK_KNIGHT_DROP;
@@ -2215,7 +2320,7 @@ __global__ void generateBlackMovesKernel(Board* inBoards,
         moveNumber++;
       }
     }
-    legalDropSpots = ~occupied;
+    legalDropSpots = validMoves & ~occupied;
     movesIterator.Init(legalDropSpots);
     while (movesIterator.d_Next()) {
       if (board.inHand.pieceNumber.BlackSilverGeneral > 0) {
@@ -2260,7 +2365,7 @@ __global__ void generateWhiteBoardsKernel(Move* inMoves,
                                           uint32_t* moveToBoardIdx,
                                           Board* outBoards) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index > inMovesLength)
+  if (index >= inMovesLength)
     return;
   uint64_t one = 1;
   Board board = inBoards[moveToBoardIdx[index]];
@@ -2309,7 +2414,7 @@ __global__ void generateBlackBoardsKernel(Move* inMoves,
                                           uint32_t* moveToBoardIdx,
                                           Board* outBoards) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index > inMovesLength)
+  if (index >= inMovesLength)
     return;
 
   uint64_t one = 1;
@@ -2353,15 +2458,204 @@ __global__ void generateBlackBoardsKernel(Move* inMoves,
   outBoards[index] = board;
 }
 
+
+__global__ void evaluateBoardsKernel(Board* inBoards,
+    uint32_t inBoardsLength,
+    int16_t* outValues) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index >= inBoardsLength)
+    return;
+
+  Board board = inBoards[index];
+  int16_t whitePoints = 0, blackPoints = 0;
+  Bitboard pieces;
+  // White
+  // Pawns
+  pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+           ~board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PAWN;
+  pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+           board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_PAWN;
+  whitePoints += board.inHand.pieceNumber.WhitePawn * PieceValue::IN_HAND_LANCE;
+  // Lances
+  pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] &
+           ~board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::LANCE;
+  pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] &
+           board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_LANCE;
+  whitePoints +=
+      board.inHand.pieceNumber.WhiteLance * PieceValue::IN_HAND_LANCE;
+  // Knights
+  pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] &
+           ~board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::KNIGHT;
+  pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] &
+           board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_KNIGHT;
+  whitePoints +=
+      board.inHand.pieceNumber.WhiteKnight * PieceValue::IN_HAND_KNIGHT;
+  // SilverGenerals
+  pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_WHITE] &
+           ~board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::SILVER_GENERAL;
+  pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_WHITE] &
+           board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_SILVER_GENERAL;
+  whitePoints += board.inHand.pieceNumber.WhiteSilverGeneral *
+                 PieceValue::IN_HAND_SILVER_GENERAL;
+  // GoldGenerals
+  pieces = board[BB::Type::GOLD_GENERAL] & board[BB::Type::ALL_WHITE] &
+           ~board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::GOLD_GENERAL;
+  whitePoints += board.inHand.pieceNumber.WhiteGoldGeneral *
+                 PieceValue::IN_HAND_GOLD_GENERAL;
+  // Bishops
+  pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+           ~board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::BISHOP;
+  pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+           board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_BISHOP;
+  whitePoints +=
+      board.inHand.pieceNumber.WhiteBishop * PieceValue::IN_HAND_BISHOP;
+  // Rooks
+  pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+           ~board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::ROOK;
+  pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+           board[BB::Type::PROMOTED];
+  whitePoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_ROOK;
+  whitePoints += board.inHand.pieceNumber.WhiteRook * PieceValue::IN_HAND_ROOK;
+
+  // Black
+  // Pawns
+  pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+           ~board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PAWN;
+  pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+           board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_PAWN;
+  blackPoints += board.inHand.pieceNumber.BlackPawn * PieceValue::IN_HAND_LANCE;
+  // Lances
+  pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] &
+           ~board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::LANCE;
+  pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] &
+           board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_LANCE;
+  blackPoints +=
+      board.inHand.pieceNumber.BlackLance * PieceValue::IN_HAND_LANCE;
+  // Knights
+  pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] &
+           ~board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::KNIGHT;
+  pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] &
+           board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_KNIGHT;
+  blackPoints +=
+      board.inHand.pieceNumber.BlackKnight * PieceValue::IN_HAND_KNIGHT;
+  // SilverGenerals
+  pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_BLACK] &
+           ~board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::SILVER_GENERAL;
+  pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_BLACK] &
+           board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_SILVER_GENERAL;
+  blackPoints += board.inHand.pieceNumber.BlackSilverGeneral *
+                 PieceValue::IN_HAND_SILVER_GENERAL;
+  // GoldGenerals
+  pieces = board[BB::Type::GOLD_GENERAL] & board[BB::Type::ALL_BLACK] &
+           ~board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::GOLD_GENERAL;
+  blackPoints += board.inHand.pieceNumber.BlackGoldGeneral *
+                 PieceValue::IN_HAND_GOLD_GENERAL;
+  // Bishops
+  pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+           ~board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::BISHOP;
+  pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+           board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_BISHOP;
+  blackPoints +=
+      board.inHand.pieceNumber.BlackBishop * PieceValue::IN_HAND_BISHOP;
+  // Rooks
+  pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+           ~board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::ROOK;
+  pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+           board[BB::Type::PROMOTED];
+  blackPoints += (d_popcount(pieces[TOP]) + d_popcount(pieces[MID]) +
+                  d_popcount(pieces[BOTTOM])) *
+                 PieceValue::PROMOTED_ROOK;
+  blackPoints += board.inHand.pieceNumber.BlackRook * PieceValue::IN_HAND_ROOK;
+
+  outValues[index] = whitePoints - blackPoints;
+}
+
 int GPU::countWhiteMoves(thrust::device_ptr<Board> inBoards,
                          uint32_t inBoardsLength,
                          thrust::device_ptr<Bitboard> outValidMoves,
                          thrust::device_ptr<Bitboard> outAttackedByEnemy,
-                         thrust::device_ptr<uint32_t> outMovesOffset) {
+                         thrust::device_ptr<Bitboard> outPinned,
+                         thrust::device_ptr<uint32_t> outMovesOffset,
+                         thrust::device_ptr<bool> isMate) {
   int numOfBlocks = calculateNumberOfBlocks(inBoardsLength);
   countWhiteMovesKernel<<<numOfBlocks, THREADS_COUNT>>>(
       inBoards.get(), inBoardsLength, outValidMoves.get(),
-      outAttackedByEnemy.get(), outMovesOffset.get(), lookUpTables);
+      outAttackedByEnemy.get(), outPinned.get(), outMovesOffset.get(),
+      isMate.get(), lookUpTables);
 
   cudaError_t cudaStatus;
   cudaStatus = cudaGetLastError();
@@ -2385,11 +2679,14 @@ int GPU::countBlackMoves(thrust::device_ptr<Board> inBoards,
                          uint32_t inBoardsLength,
                          thrust::device_ptr<Bitboard> outValidMoves,
                          thrust::device_ptr<Bitboard> outAttackedByEnemy,
-                         thrust::device_ptr<uint32_t> outMovesOffset) {
+                         thrust::device_ptr<Bitboard> outPinned,
+                         thrust::device_ptr<uint32_t> outMovesOffset,
+                         thrust::device_ptr<bool> isMate) {
   int numOfBlocks = calculateNumberOfBlocks(inBoardsLength);
   countBlackMovesKernel<<<numOfBlocks, THREADS_COUNT>>>(
       inBoards.get(), inBoardsLength, outValidMoves.get(),
-      outAttackedByEnemy.get(), outMovesOffset.get(), lookUpTables);
+      outAttackedByEnemy.get(), outPinned.get(), outMovesOffset.get(),
+      isMate.get(), lookUpTables);
 
   cudaError_t cudaStatus;
   cudaStatus = cudaGetLastError();
@@ -2435,14 +2732,15 @@ int GPU::generateWhiteMoves(thrust::device_ptr<Board> inBoards,
                             uint32_t inBoardsLength,
                             thrust::device_ptr<Bitboard> inValidMoves,
                             thrust::device_ptr<Bitboard> inAttackedByEnemy,
+                            thrust::device_ptr<Bitboard> inPinned,
                             thrust::device_ptr<uint32_t> inMovesOffset,
                             thrust::device_ptr<Move> outMoves,
                             thrust::device_ptr<uint32_t> outMoveToBoardIdx) {
   int numOfBlocks = calculateNumberOfBlocks(inBoardsLength);
   generateWhiteMovesKernel<<<numOfBlocks, THREADS_COUNT>>>(
       inBoards.get(), inBoardsLength, inValidMoves.get(),
-      inAttackedByEnemy.get(), inMovesOffset.get(), outMoves.get(),
-      outMoveToBoardIdx.get(), lookUpTables);
+      inAttackedByEnemy.get(), inPinned.get(), inMovesOffset.get(),
+      outMoves.get(), outMoveToBoardIdx.get(), lookUpTables);
 
   cudaError_t cudaStatus;
   cudaStatus = cudaGetLastError();
@@ -2466,14 +2764,15 @@ int GPU::generateBlackMoves(thrust::device_ptr<Board> inBoards,
                             uint32_t inBoardsLength,
                             thrust::device_ptr<Bitboard> inValidMoves,
                             thrust::device_ptr<Bitboard> inAttackedByEnemy,
+                            thrust::device_ptr<Bitboard> inPinned,
                             thrust::device_ptr<uint32_t> inMovesOffset,
                             thrust::device_ptr<Move> outMoves,
                             thrust::device_ptr<uint32_t> outMoveToBoardIdx) {
   int numOfBlocks = calculateNumberOfBlocks(inBoardsLength);
   generateBlackMovesKernel<<<numOfBlocks, THREADS_COUNT>>>(
       inBoards.get(), inBoardsLength, inValidMoves.get(),
-      inAttackedByEnemy.get(), inMovesOffset.get(), outMoves.get(),
-      outMoveToBoardIdx.get(), lookUpTables);
+      inAttackedByEnemy.get(), inPinned.get(), inMovesOffset.get(),
+      outMoves.get(), outMoveToBoardIdx.get(), lookUpTables);
 
   cudaError_t cudaStatus;
   cudaStatus = cudaGetLastError();
@@ -2552,6 +2851,25 @@ int GPU::generateBlackBoards(thrust::device_ptr<Move> inMoves,
 int GPU::evaluateBoards(thrust::device_ptr<Board> inBoards,
                         uint32_t inBoardsLength,
                         thrust::device_ptr<int16_t> outValues) {
+  int numOfBlocks = calculateNumberOfBlocks(inBoardsLength);
+  evaluateBoardsKernel<<<numOfBlocks, THREADS_COUNT>>>(
+      inBoards.get(), inBoardsLength, outValues.get());
+
+  cudaError_t cudaStatus;
+  cudaStatus = cudaGetLastError();
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr, "generateBlackBoards launch failed: %s\n",
+            cudaGetErrorString(cudaStatus));
+    return -1;
+  }
+  cudaStatus = cudaDeviceSynchronize();
+  if (cudaStatus != cudaSuccess) {
+    fprintf(stderr,
+            "cudaDeviceSynchronize returned error code %d after launching "
+            "generateBlackBoards!\n",
+            cudaStatus);
+    return -1;
+  }
   return 0;
 }
 }  // namespace engine

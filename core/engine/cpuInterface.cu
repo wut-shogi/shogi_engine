@@ -7,7 +7,10 @@ void CPU::countWhiteMoves(Board* inBoards,
                           uint32_t inBoardsLength,
                           Bitboard* outValidMoves,
                           Bitboard* outAttackedByEnemy,
-                          uint32_t* outMovesOffset) {
+                          Bitboard* outPinned,
+                          uint32_t* outMovesOffset,
+                          bool* isMate) {
+  *isMate = false;
   for (int index = 0; index < inBoardsLength; index++) {
     Board board = inBoards[index];
     Bitboard king = board[BB::Type::KING] & board[BB::Type::ALL_WHITE];
@@ -20,13 +23,13 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     // Non Sliding pieces
     // Pawns
-    pieces = board.bbs[BB::Type::PAWN] & board.bbs[BB::Type::ALL_BLACK] &
-             notPromoted;
+    pieces = board.bbs[BB::Type::PAWN] &
+             board.bbs[BB::Type::ALL_BLACK] & notPromoted;
     checkingPieces |= moveS(king) & pieces;
     attacked |= moveN(pieces);
     // Knights
-    pieces = board.bbs[BB::Type::KNIGHT] & board.bbs[BB::Type::ALL_BLACK] &
-             notPromoted;
+    pieces = board.bbs[BB::Type::KNIGHT] &
+             board.bbs[BB::Type::ALL_BLACK] & notPromoted;
     checkingPieces |= moveS(moveSE(king) | moveSW(king)) & pieces;
     attacked |= moveN(moveNE(pieces) | moveNW(pieces));
     // Silve generals
@@ -229,7 +232,13 @@ void CPU::countWhiteMoves(Board* inBoards,
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
 
     Bitboard validMoves;
-    if (numberOfCheckingPieces == 1) {
+    // If more then one piece is checking the king and king cannot move its mate
+    if (numberOfCheckingPieces > 1) {
+      if (numberOfMoves == 0) {
+        *isMate = true;
+        return;
+      }
+    } else if (numberOfCheckingPieces == 1) {
       // if king is checked by exactly one piece legal moves can also be block
       // sliding check or capture a checking piece
       validMoves = checkingPieces | (slidingChecksPaths & ~king);
@@ -241,10 +250,12 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     outValidMoves[index] = validMoves;
     outAttackedByEnemy[index] = attacked;
+    outPinned[index] = pinned;
 
     // Pawn moves
     {
-      pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] & notPromoted;
+      pieces = ~pinned & board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+               notPromoted;
       moves = moveS(pieces) & validMoves;
       ourAttacks |= moves;
       numberOfMoves +=
@@ -255,7 +266,7 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     // Knight moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] & notPromoted;
       moves = moveS(moveSE(pieces)) & validMoves;
       ourAttacks |= moves;
@@ -271,8 +282,8 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     // SilverGenerals moves
     {
-      pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_WHITE] &
-               notPromoted;
+      pieces = ~pinned & board[BB::Type::SILVER_GENERAL] &
+               board[BB::Type::ALL_WHITE] & notPromoted;
       moves = moveS(pieces) & validMoves;
       ourAttacks |= moves;
       numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
@@ -303,7 +314,8 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     // GoldGenerals moves
     {
-      pieces = (board[BB::Type::GOLD_GENERAL] |
+      pieces = ~pinned &
+               (board[BB::Type::GOLD_GENERAL] |
                 ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                   board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                  board[BB::Type::PROMOTED])) &
@@ -336,7 +348,7 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     // Lance moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] & notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -353,7 +365,7 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     // Bishop moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] & notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -376,7 +388,8 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     // Rook moves
     {
-      pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] & notPromoted;
+      pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+               notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
@@ -398,7 +411,7 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     // Horse moves
     {
-      pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+      pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
                board[BB::Type::PROMOTED];
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -416,7 +429,7 @@ void CPU::countWhiteMoves(Board* inBoards,
 
     // Dragon moves
     {
-      pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+      pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
                board[BB::Type::PROMOTED];
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -437,7 +450,7 @@ void CPU::countWhiteMoves(Board* inBoards,
       Bitboard legalDropSpots;
       // Pawns
       if (board.inHand.pieceNumber.WhitePawn > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last rank
         legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
         // Cannot drop to give checkmate
@@ -468,7 +481,7 @@ void CPU::countWhiteMoves(Board* inBoards,
                          popcount(legalDropSpots[BOTTOM]);
       }
       if (board.inHand.pieceNumber.WhiteLance > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last rank
         legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
         numberOfMoves += popcount(legalDropSpots[TOP]) +
@@ -476,14 +489,14 @@ void CPU::countWhiteMoves(Board* inBoards,
                          popcount(legalDropSpots[BOTTOM]);
       }
       if (board.inHand.pieceNumber.WhiteKnight > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last two ranks
         legalDropSpots[BOTTOM] &= TOP_RANK;
         numberOfMoves += popcount(legalDropSpots[TOP]) +
                          popcount(legalDropSpots[MID]) +
                          popcount(legalDropSpots[BOTTOM]);
       }
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       numberOfMoves +=
           ((board.inHand.pieceNumber.WhiteSilverGeneral > 0) +
            (board.inHand.pieceNumber.WhiteGoldGeneral > 0) +
@@ -492,7 +505,10 @@ void CPU::countWhiteMoves(Board* inBoards,
           (popcount(legalDropSpots[TOP]) + popcount(legalDropSpots[MID]) +
            popcount(legalDropSpots[BOTTOM]));
     }
-
+    if (numberOfMoves == 0) {
+      *isMate = true;
+      return;
+    }
     outMovesOffset[index] = numberOfMoves;
   }
 }
@@ -501,7 +517,10 @@ void CPU::countBlackMoves(Board* inBoards,
                           uint32_t inBoardsLength,
                           Bitboard* outValidMoves,
                           Bitboard* outAttackedByEnemy,
-                          uint32_t* outMovesOffset) {
+                          Bitboard* outPinned,
+                          uint32_t* outMovesOffset,
+                          bool* isMate) {
+  *isMate == false;
   for (int index = 0; index < inBoardsLength; index++) {
     Board board = inBoards[index];
     Bitboard king = board[BB::Type::KING] & board[BB::Type::ALL_BLACK];
@@ -514,13 +533,13 @@ void CPU::countBlackMoves(Board* inBoards,
 
     // Non Sliding pieces
     // Pawns
-    pieces = board.bbs[BB::Type::PAWN] & board.bbs[BB::Type::ALL_WHITE] &
-             notPromoted;
+    pieces = board.bbs[BB::Type::PAWN] &
+             board.bbs[BB::Type::ALL_WHITE] & notPromoted;
     checkingPieces |= moveN(king) & pieces;
     attacked |= moveS(pieces);
     // Knights
-    pieces = board.bbs[BB::Type::KNIGHT] & board.bbs[BB::Type::ALL_WHITE] &
-             notPromoted;
+    pieces = board.bbs[BB::Type::KNIGHT] &
+             board.bbs[BB::Type::ALL_WHITE] & notPromoted;
     checkingPieces |= moveN(moveNE(king) | moveNW(king)) & pieces;
     attacked |= moveS(moveSE(pieces) | moveSW(pieces));
     // Silver generals
@@ -722,7 +741,13 @@ void CPU::countBlackMoves(Board* inBoards,
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
     Bitboard validMoves;
-    if (numberOfCheckingPieces == 1) {
+    // If more then one piece is checking the king and king cannot move its mate
+    if (numberOfCheckingPieces > 1) {
+      if (numberOfMoves == 0) {
+        *isMate = true;
+        return;
+      }
+    } else if (numberOfCheckingPieces == 1) {
       // if king is checked by exactly one piece legal moves can also be block
       // sliding check or capture a checking piece
       validMoves = checkingPieces | (slidingChecksPaths & ~king);
@@ -734,10 +759,12 @@ void CPU::countBlackMoves(Board* inBoards,
 
     outValidMoves[index] = validMoves;
     outAttackedByEnemy[index] = attacked;
+    outPinned[index] = pinned;
 
     // Pawn moves
     {
-      pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] & notPromoted;
+      pieces = ~pinned & board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+               notPromoted;
       moves = moveN(pieces) & validMoves;
       ourAttacks |= moves;
       numberOfMoves += popcount(moves[TOP] & TOP_RANK) +  // forced promotions
@@ -747,7 +774,7 @@ void CPU::countBlackMoves(Board* inBoards,
 
     // Knight moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] & notPromoted;
       moves = moveN(moveNE(pieces)) & validMoves;
       ourAttacks |= moves;
@@ -764,8 +791,8 @@ void CPU::countBlackMoves(Board* inBoards,
 
     // SilverGenerals moves
     {
-      pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_BLACK] &
-               notPromoted;
+      pieces = ~pinned & board[BB::Type::SILVER_GENERAL] &
+               board[BB::Type::ALL_BLACK] & notPromoted;
       moves = moveN(pieces) & validMoves;
       ourAttacks |= moves;
       numberOfMoves += popcount(moves[TOP]) * 2 +  // promotions
@@ -796,7 +823,8 @@ void CPU::countBlackMoves(Board* inBoards,
 
     // GoldGenerals moves
     {
-      pieces = (board[BB::Type::GOLD_GENERAL] |
+      pieces = ~pinned &
+               (board[BB::Type::GOLD_GENERAL] |
                 ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                   board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                  board[BB::Type::PROMOTED])) &
@@ -829,7 +857,7 @@ void CPU::countBlackMoves(Board* inBoards,
 
     // Lance moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] & notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -845,7 +873,7 @@ void CPU::countBlackMoves(Board* inBoards,
 
     // Bishop moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] & notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -867,7 +895,8 @@ void CPU::countBlackMoves(Board* inBoards,
 
     // Rook moves
     {
-      pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] & notPromoted;
+      pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+               notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
@@ -888,7 +917,7 @@ void CPU::countBlackMoves(Board* inBoards,
 
     // Horse moves
     {
-      pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+      pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
                board[BB::Type::PROMOTED];
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -906,7 +935,7 @@ void CPU::countBlackMoves(Board* inBoards,
 
     // Dragon moves
     {
-      pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+      pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
                board[BB::Type::PROMOTED];
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -927,7 +956,7 @@ void CPU::countBlackMoves(Board* inBoards,
       Bitboard legalDropSpots;
       // Pawns
       if (board.inHand.pieceNumber.BlackPawn > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last rank
         legalDropSpots[TOP] &= ~TOP_RANK;
         // Cannot drop to give checkmate
@@ -958,7 +987,7 @@ void CPU::countBlackMoves(Board* inBoards,
                          popcount(legalDropSpots[BOTTOM]);
       }
       if (board.inHand.pieceNumber.BlackLance > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last rank
         legalDropSpots[TOP] &= ~TOP_RANK;
         numberOfMoves += popcount(legalDropSpots[TOP]) +
@@ -966,14 +995,14 @@ void CPU::countBlackMoves(Board* inBoards,
                          popcount(legalDropSpots[BOTTOM]);
       }
       if (board.inHand.pieceNumber.BlackKnight > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last two ranks
         legalDropSpots[TOP] &= BOTTOM_RANK;
         numberOfMoves += popcount(legalDropSpots[TOP]) +
                          popcount(legalDropSpots[MID]) +
                          popcount(legalDropSpots[BOTTOM]);
       }
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       numberOfMoves +=
           ((board.inHand.pieceNumber.BlackSilverGeneral > 0) +
            (board.inHand.pieceNumber.BlackGoldGeneral > 0) +
@@ -982,7 +1011,10 @@ void CPU::countBlackMoves(Board* inBoards,
           (popcount(legalDropSpots[TOP]) + popcount(legalDropSpots[MID]) +
            popcount(legalDropSpots[BOTTOM]));
     }
-
+    if (numberOfMoves == 0) {
+      *isMate = true;
+      return;
+    }
     outMovesOffset[index] = numberOfMoves;
   }
 }
@@ -991,6 +1023,7 @@ void CPU::generateWhiteMoves(Board* inBoards,
                              uint32_t inBoardsLength,
                              Bitboard* inValidMoves,
                              Bitboard* inAttackedByEnemy,
+                             Bitboard* inPinned,
                              uint32_t* inMovesOffset,
                              Move* outMoves,
                              uint32_t* outMoveToBoardIdx) {
@@ -998,6 +1031,7 @@ void CPU::generateWhiteMoves(Board* inBoards,
     Board board = inBoards[index];
     Bitboard validMoves = inValidMoves[index];
     Bitboard notPromoted = ~board[BB::Type::PROMOTED];
+    Bitboard pinned = inPinned[index];
     Bitboard pieces, moves, ourAttacks;
     Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
     BitboardIterator movesIterator, iterator;
@@ -1007,7 +1041,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
     uint32_t moveNumber = 0;
     // Pawn moves
     {
-      pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] & notPromoted;
+      pieces = ~pinned & board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+               notPromoted;
       moves = moveS(pieces) & validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
@@ -1034,7 +1069,7 @@ void CPU::generateWhiteMoves(Board* inBoards,
     }
     // Knight moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] & notPromoted;
       moves = moveS(moveSE(pieces)) & validMoves;
       ourAttacks |= moves;
@@ -1086,8 +1121,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
 
     // SilverGenerals moves
     {
-      pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_WHITE] &
-               notPromoted;
+      pieces = ~pinned & board[BB::Type::SILVER_GENERAL] &
+               board[BB::Type::ALL_WHITE] & notPromoted;
       moves = moveS(pieces) & validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
@@ -1194,7 +1229,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
 
     // GoldGenerals moves
     {
-      pieces = (board[BB::Type::GOLD_GENERAL] |
+      pieces = ~pinned &
+               (board[BB::Type::GOLD_GENERAL] |
                 ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                   board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                  board[BB::Type::PROMOTED])) &
@@ -1275,7 +1311,7 @@ void CPU::generateWhiteMoves(Board* inBoards,
 
     // Lances moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] & notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -1309,7 +1345,7 @@ void CPU::generateWhiteMoves(Board* inBoards,
 
     // Bishop moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] & notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -1341,7 +1377,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
 
     // Rook moves
     {
-      pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] & notPromoted;
+      pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+               notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
@@ -1373,15 +1410,16 @@ void CPU::generateWhiteMoves(Board* inBoards,
 
     // Horse moves
     {
-      pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+      pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
                board[BB::Type::PROMOTED];
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
+        Bitboard horse(static_cast<Square>(move.from));
         moves =
             (getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
              getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
-             moveN(pieces) | moveE(pieces) | moveS(pieces) | moveW(pieces)) &
+                 moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
             validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -1397,11 +1435,12 @@ void CPU::generateWhiteMoves(Board* inBoards,
 
     // Dragon moves
     {
-      pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+      pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
                board[BB::Type::PROMOTED];
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
+        Bitboard dragon(static_cast<Square>(move.from));
         moves = (getRankAttacks(static_cast<Square>(move.from), occupied) |
                  getFileAttacks(static_cast<Square>(move.from), occupied) |
                  moveNW(pieces) | moveNE(pieces) | moveSE(pieces) |
@@ -1446,7 +1485,7 @@ void CPU::generateWhiteMoves(Board* inBoards,
       Bitboard legalDropSpots;
       // Pawns
       if (board.inHand.pieceNumber.WhitePawn > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last rank
         legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
         // Cannot drop to give checkmate
@@ -1483,23 +1522,9 @@ void CPU::generateWhiteMoves(Board* inBoards,
         }
       }
       if (board.inHand.pieceNumber.WhiteLance > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last rank
         legalDropSpots[BOTTOM] &= ~BOTTOM_RANK;
-        movesIterator.Init(legalDropSpots);
-        move.from = WHITE_KNIGHT_DROP;
-        while (movesIterator.Next()) {
-          move.to = movesIterator.GetCurrentSquare();
-          outMoves[movesOffset + moveNumber] = move;
-
-          outMoveToBoardIdx[movesOffset + moveNumber] = index;
-          moveNumber++;
-        }
-      }
-      if (board.inHand.pieceNumber.WhiteKnight > 0) {
-        legalDropSpots = ~occupied;
-        // Cannot drop on last two ranks
-        legalDropSpots[BOTTOM] &= TOP_RANK;
         movesIterator.Init(legalDropSpots);
         move.from = WHITE_LANCE_DROP;
         while (movesIterator.Next()) {
@@ -1510,7 +1535,21 @@ void CPU::generateWhiteMoves(Board* inBoards,
           moveNumber++;
         }
       }
-      legalDropSpots = ~occupied;
+      if (board.inHand.pieceNumber.WhiteKnight > 0) {
+        legalDropSpots = validMoves & ~occupied;
+        // Cannot drop on last two ranks
+        legalDropSpots[BOTTOM] &= TOP_RANK;
+        movesIterator.Init(legalDropSpots);
+        move.from = WHITE_KNIGHT_DROP;
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          outMoves[movesOffset + moveNumber] = move;
+
+          outMoveToBoardIdx[movesOffset + moveNumber] = index;
+          moveNumber++;
+        }
+      }
+      legalDropSpots = validMoves & ~occupied;
       movesIterator.Init(legalDropSpots);
       while (movesIterator.Next()) {
         if (board.inHand.pieceNumber.WhiteSilverGeneral > 0) {
@@ -1549,7 +1588,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
     }
 
     if (moveNumber > movesCount) {
-      std::cout << "error" << std::endl;
+      std::cout << "Error in:" << std::endl;
+      std::cout << boardToSFEN(board) << std::endl;
     }
   }
 }
@@ -1558,6 +1598,7 @@ void CPU::generateBlackMoves(Board* inBoards,
                              uint32_t inBoardsLength,
                              Bitboard* inValidMoves,
                              Bitboard* inAttackedByEnemy,
+    Bitboard* inPinned,
                              uint32_t* inMovesOffset,
                              Move* outMoves,
                              uint32_t* outMoveToBoardIdx) {
@@ -1565,6 +1606,7 @@ void CPU::generateBlackMoves(Board* inBoards,
     Board board = inBoards[index];
     Bitboard validMoves = inValidMoves[index];
     Bitboard notPromoted = ~board[BB::Type::PROMOTED];
+    Bitboard pinned = inPinned[index];
     Bitboard pieces, moves, ourAttacks;
     Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
     BitboardIterator movesIterator, iterator;
@@ -1574,7 +1616,8 @@ void CPU::generateBlackMoves(Board* inBoards,
     uint32_t moveNumber = 0;
     // Pawn moves
     {
-      pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] & notPromoted;
+      pieces = ~pinned & board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+               notPromoted;
       moves = moveN(pieces) & validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
@@ -1601,7 +1644,7 @@ void CPU::generateBlackMoves(Board* inBoards,
     }
     // Knight moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] & notPromoted;
       moves = moveN(moveNE(pieces)) & validMoves;
       ourAttacks |= moves;
@@ -1652,8 +1695,8 @@ void CPU::generateBlackMoves(Board* inBoards,
     }
     // SilverGenerals moves
     {
-      pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_BLACK] &
-               notPromoted;
+      pieces = ~pinned & board[BB::Type::SILVER_GENERAL] &
+               board[BB::Type::ALL_BLACK] & notPromoted;
       moves = moveN(pieces) & validMoves;
       ourAttacks |= moves;
       movesIterator.Init(moves);
@@ -1759,7 +1802,8 @@ void CPU::generateBlackMoves(Board* inBoards,
     }
     // GoldGenerals moves
     {
-      pieces = (board[BB::Type::GOLD_GENERAL] |
+      pieces = ~pinned &
+               (board[BB::Type::GOLD_GENERAL] |
                 ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                   board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                  board[BB::Type::PROMOTED])) &
@@ -1839,7 +1883,7 @@ void CPU::generateBlackMoves(Board* inBoards,
     }
     // Lances moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] & notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -1872,7 +1916,7 @@ void CPU::generateBlackMoves(Board* inBoards,
     }
     // Bishop moves
     {
-      pieces =
+      pieces = ~pinned & 
           board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] & notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -1903,7 +1947,8 @@ void CPU::generateBlackMoves(Board* inBoards,
     }
     // Rook moves
     {
-      pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] & notPromoted;
+      pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+               notPromoted;
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
@@ -1934,15 +1979,16 @@ void CPU::generateBlackMoves(Board* inBoards,
     move.promotion = 0;
     // Horse moves
     {
-      pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+      pieces = ~pinned & board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
                board[BB::Type::PROMOTED];
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
+        Bitboard horse(static_cast<Square>(move.from));
         moves =
             (getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
              getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
-             moveN(pieces) | moveE(pieces) | moveS(pieces) | moveW(pieces)) &
+                 moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
             validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -1957,15 +2003,16 @@ void CPU::generateBlackMoves(Board* inBoards,
     }
     // Dragon moves
     {
-      pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+      pieces = ~pinned & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
                board[BB::Type::PROMOTED];
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
+        Bitboard dragon(static_cast<Square>(move.from));
         moves = (getRankAttacks(static_cast<Square>(move.from), occupied) |
                  getFileAttacks(static_cast<Square>(move.from), occupied) |
-                 moveNW(pieces) | moveNE(pieces) | moveSE(pieces) |
-                 moveSW(pieces)) &
+                 moveNW(dragon) | moveNE(dragon) | moveSE(dragon) |
+                 moveSW(dragon)) &
                 validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -2004,7 +2051,7 @@ void CPU::generateBlackMoves(Board* inBoards,
       Bitboard legalDropSpots;
       // Pawns
       if (board.inHand.pieceNumber.BlackPawn > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last rank
         legalDropSpots[TOP] &= ~TOP_RANK;
         // Cannot drop to give checkmate
@@ -2041,7 +2088,7 @@ void CPU::generateBlackMoves(Board* inBoards,
         }
       }
       if (board.inHand.pieceNumber.BlackLance > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last rank
         legalDropSpots[TOP] &= ~TOP_RANK;
         move.from = BLACK_LANCE_DROP;
@@ -2055,7 +2102,7 @@ void CPU::generateBlackMoves(Board* inBoards,
         }
       }
       if (board.inHand.pieceNumber.BlackKnight > 0) {
-        legalDropSpots = ~occupied;
+        legalDropSpots = validMoves & ~occupied;
         // Cannot drop on last two ranks
         legalDropSpots[TOP] &= BOTTOM_RANK;
         move.from = BLACK_KNIGHT_DROP;
@@ -2068,7 +2115,7 @@ void CPU::generateBlackMoves(Board* inBoards,
           moveNumber++;
         }
       }
-      legalDropSpots = ~occupied;
+      legalDropSpots = validMoves & ~occupied;
       movesIterator.Init(legalDropSpots);
       while (movesIterator.Next()) {
         if (board.inHand.pieceNumber.BlackSilverGeneral > 0) {
@@ -2153,9 +2200,9 @@ void CPU::generateWhiteBoards(Move* inMoves,
       int offset = move.from - WHITE_PAWN_DROP;
       uint64_t addedValue = one << (4 * offset);
       board.inHand.value -= addedValue;
-      board[static_cast<BB::Type>(offset%7)][toRegionIdx] |= toRegion;
-      board[static_cast<BB::Type>(BB::Type::ALL_WHITE)]
-           [toRegionIdx] |= toRegion;
+      board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
+      board[static_cast<BB::Type>(BB::Type::ALL_WHITE)][toRegionIdx] |=
+          toRegion;
     }
     outBoards[index] = board;
   }
@@ -2202,9 +2249,9 @@ void CPU::generateBlackBoards(Move* inMoves,
       int offset = move.from - WHITE_PAWN_DROP;
       uint64_t addedValue = one << (4 * offset);
       board.inHand.value -= addedValue;
-      board[static_cast<BB::Type>(offset%7)][toRegionIdx] |= toRegion;
-      board[static_cast<BB::Type>(BB::Type::ALL_BLACK)]
-           [toRegionIdx] |= toRegion;
+      board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
+      board[static_cast<BB::Type>(BB::Type::ALL_BLACK)][toRegionIdx] |=
+          toRegion;
     }
     outBoards[index] = board;
   }
@@ -2221,7 +2268,186 @@ void CPU::evaluateBoards(Board* inBoards,
                          uint32_t inBoardsLength,
                          int16_t* outValues) {
   for (int index = 1; index < inBoardsLength; index++) {
-    outValues[index] = 500;
+    Board board = inBoards[index];
+    int16_t whitePoints = 0, blackPoints = 0;
+    Bitboard pieces;
+    // White
+    // Pawns
+    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PAWN;
+    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+             board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_PAWN;
+    whitePoints +=
+        board.inHand.pieceNumber.WhitePawn * PieceValue::IN_HAND_LANCE;
+    // Lances
+    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::LANCE;
+    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] &
+             board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_LANCE;
+    whitePoints +=
+        board.inHand.pieceNumber.WhiteLance * PieceValue::IN_HAND_LANCE;
+    // Knights
+    pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::KNIGHT;
+    pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] &
+             board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_KNIGHT;
+    whitePoints +=
+        board.inHand.pieceNumber.WhiteKnight * PieceValue::IN_HAND_KNIGHT;
+    // SilverGenerals
+    pieces = board[BB::Type::SILVER_GENERAL] &
+             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::SILVER_GENERAL;
+    pieces = board[BB::Type::SILVER_GENERAL] &
+             board[BB::Type::ALL_WHITE] & board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_SILVER_GENERAL;
+    whitePoints += board.inHand.pieceNumber.WhiteSilverGeneral *
+                   PieceValue::IN_HAND_SILVER_GENERAL;
+    // GoldGenerals
+    pieces = board[BB::Type::GOLD_GENERAL] &
+             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::GOLD_GENERAL;
+    whitePoints += board.inHand.pieceNumber.WhiteGoldGeneral *
+                   PieceValue::IN_HAND_GOLD_GENERAL;
+    // Bishops
+    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::BISHOP;
+    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE] &
+             board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_BISHOP;
+    whitePoints +=
+        board.inHand.pieceNumber.WhiteBishop * PieceValue::IN_HAND_BISHOP;
+    // Rooks
+    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::ROOK;
+    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
+             board[BB::Type::PROMOTED];
+    whitePoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_ROOK;
+    whitePoints +=
+        board.inHand.pieceNumber.WhiteRook * PieceValue::IN_HAND_ROOK;
+
+    // Black
+    // Pawns
+    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PAWN;
+    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+             board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_PAWN;
+    blackPoints +=
+        board.inHand.pieceNumber.BlackPawn * PieceValue::IN_HAND_LANCE;
+    // Lances
+    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::LANCE;
+    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] &
+             board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_LANCE;
+    blackPoints +=
+        board.inHand.pieceNumber.BlackLance * PieceValue::IN_HAND_LANCE;
+    // Knights
+    pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::KNIGHT;
+    pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] &
+             board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_KNIGHT;
+    blackPoints +=
+        board.inHand.pieceNumber.BlackKnight * PieceValue::IN_HAND_KNIGHT;
+    // SilverGenerals
+    pieces = board[BB::Type::SILVER_GENERAL] &
+             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::SILVER_GENERAL;
+    pieces = board[BB::Type::SILVER_GENERAL] &
+             board[BB::Type::ALL_BLACK] & board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_SILVER_GENERAL;
+    blackPoints += board.inHand.pieceNumber.BlackSilverGeneral *
+                   PieceValue::IN_HAND_SILVER_GENERAL;
+    // GoldGenerals
+    pieces = board[BB::Type::GOLD_GENERAL] &
+             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::GOLD_GENERAL;
+    blackPoints += board.inHand.pieceNumber.BlackGoldGeneral *
+                   PieceValue::IN_HAND_GOLD_GENERAL;
+    // Bishops
+    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::BISHOP;
+    pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
+             board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_BISHOP;
+    blackPoints +=
+        board.inHand.pieceNumber.BlackBishop * PieceValue::IN_HAND_BISHOP;
+    // Rooks
+    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::ROOK;
+    pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
+             board[BB::Type::PROMOTED];
+    blackPoints += (popcount(pieces[TOP]) + popcount(pieces[MID]) +
+                    popcount(pieces[BOTTOM])) *
+                   PieceValue::PROMOTED_ROOK;
+    blackPoints +=
+        board.inHand.pieceNumber.BlackRook * PieceValue::IN_HAND_ROOK;
+
+    outValues[index] = whitePoints - blackPoints;
   }
 }
 }  // namespace engine

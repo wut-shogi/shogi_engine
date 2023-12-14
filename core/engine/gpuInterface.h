@@ -10,13 +10,17 @@ int countWhiteMoves(thrust::device_ptr<Board> inBoards,
                     uint32_t inBoardsLength,
                     thrust::device_ptr<Bitboard> outValidMoves,
                     thrust::device_ptr<Bitboard> outAttackedByEnemy,
-                    thrust::device_ptr<uint32_t> outMovesOffset);
+                    thrust::device_ptr<Bitboard> outPinned,
+                    thrust::device_ptr<uint32_t> outMovesOffset,
+                    thrust::device_ptr<bool> isMate);
 
 int countBlackMoves(thrust::device_ptr<Board> inBoards,
                     uint32_t inBoardsLength,
                     thrust::device_ptr<Bitboard> outValidMoves,
                     thrust::device_ptr<Bitboard> outAttackedByEnemy,
-                    thrust::device_ptr<uint32_t> outMovesOffset);
+                    thrust::device_ptr<Bitboard> outPinned,
+                    thrust::device_ptr<uint32_t> outMovesOffset,
+                    thrust::device_ptr<bool> isMate);
 
 int prefixSum(thrust::device_ptr<uint32_t> inValues, uint32_t inValuesLength);
 
@@ -24,6 +28,7 @@ int generateWhiteMoves(thrust::device_ptr<Board> inBoards,
                        uint32_t inBoardsLength,
                        thrust::device_ptr<Bitboard> inValidMoves,
                        thrust::device_ptr<Bitboard> inAttackedByEnemy,
+                       thrust::device_ptr<Bitboard> inPinned,
                        thrust::device_ptr<uint32_t> inMovesOffset,
                        thrust::device_ptr<Move> outMoves,
                        thrust::device_ptr<uint32_t> outMoveToBoardIdx);
@@ -32,6 +37,7 @@ int generateBlackMoves(thrust::device_ptr<Board> inBoards,
                        uint32_t inBoardsLength,
                        thrust::device_ptr<Bitboard> inValidMoves,
                        thrust::device_ptr<Bitboard> inAttackedByEnemy,
+                       thrust::device_ptr<Bitboard> inPinned,
                        thrust::device_ptr<uint32_t> inMovesOffset,
                        thrust::device_ptr<Move> outMoves,
                        thrust::device_ptr<uint32_t> outMoveToBoardIdx);
