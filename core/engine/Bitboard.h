@@ -276,5 +276,6 @@ struct BitboardIterator {
     return static_cast<Square>(squareOffset - bitPos);
   }
 };
+
 }  // namespace engine
 }  // namespace shogi

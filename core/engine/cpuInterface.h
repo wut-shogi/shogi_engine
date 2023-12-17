@@ -56,6 +56,57 @@ void evaluateBoards(Board* inBoards,
                     uint32_t inBoardsLength,
                     int16_t* outValues);
 
+void countWhiteMoves(uint32_t size,
+                     int16_t movesPerBoard,
+                     const Board& startBoard,
+                     Move* inMoves,
+                     uint32_t* outOffsets,
+                     Bitboard* outValidMoves,
+                     Bitboard* outAttackedByEnemy,
+                     Bitboard* outPinned, bool* isMate);
+
+void countBlackMoves(uint32_t size,
+                     int16_t movesPerBoard,
+                     const Board& startBoard,
+                     Move* inMoves,
+                     uint32_t* outOffsets,
+                     Bitboard* outValidMoves,
+                     Bitboard* outAttackedByEnemy,
+                     Bitboard* outPinned,
+                     bool* isMate);
+
+void generateWhiteMoves(uint32_t size,
+                        int16_t movesPerBoard,
+    const Board& startBoard,
+                        Move* inMoves,
+                        uint32_t* inOffsets,
+                        Bitboard* inValidMoves,
+                        Bitboard* inAttackedByEnemy,
+                        Bitboard* inPinned,
+                        Move* outMoves);
+
+void generateBlackMoves(uint32_t size,
+                        int16_t movesPerBoard,
+                        const Board& startBoard,
+                        Move* inMoves,
+                        uint32_t* inOffsets,
+                        Bitboard* inValidMoves,
+                        Bitboard* inAttackedByEnemy,
+                        Bitboard* inPinned,
+                        Move* outMoves);
+
+void gatherValuesMin(uint32_t size,
+                     int16_t movesPerBoard,
+                     uint32_t* inOffsets,
+                     int16_t* inValues,
+                     int16_t* outValues);
+
+void gatherValuesMax(uint32_t size,
+                     int16_t movesPerBoard,
+                     uint32_t* inOffsets,
+                     int16_t* inValues,
+                     int16_t* outValues);
+
 }  // namespace CPU
 }  // namespace engine
 }  // namespace shogi

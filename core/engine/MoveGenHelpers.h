@@ -116,6 +116,84 @@ __host__ __device__ inline uint32_t getFileBlockPattern(const Bitboard& occupied
   return result;
 }
 
+__host__ __device__ inline void makeMoveWhite(Board& board, Move move) {
+  uint64_t one = 1;
+  Region toRegionIdx = squareToRegion(static_cast<Square>(move.to));
+  uint32_t toRegion = 1 << (REGION_SIZE - 1 - move.to % REGION_SIZE);
+  if (move.from < SQUARE_SIZE) {
+    Region fromRegionIdx = squareToRegion(static_cast<Square>(move.from));
+    uint32_t fromRegion = 1 << (REGION_SIZE - 1 - move.from % REGION_SIZE);
+    for (int i = 0; i < BB::Type::KING; i++) {
+      if (board[static_cast<BB::Type>(i)][toRegionIdx] & toRegion) {
+        board[static_cast<BB::Type>(i)][toRegionIdx] &= ~toRegion;
+        uint64_t addedValue = one << (4 * i);
+        board.inHand.value += addedValue;
+      }
+      if (board[static_cast<BB::Type>(i)][fromRegionIdx] & fromRegion) {
+        board[static_cast<BB::Type>(i)][fromRegionIdx] &= ~fromRegion;
+        board[static_cast<BB::Type>(i)][toRegionIdx] |= toRegion;
+      }
+    }
+    for (int i = BB::Type::KING; i < BB::Type::SIZE; i++) {
+      if (board[static_cast<BB::Type>(i)][toRegionIdx] & toRegion) {
+        board[static_cast<BB::Type>(i)][toRegionIdx] &= ~toRegion;
+      }
+      if (board[static_cast<BB::Type>(i)][fromRegionIdx] & fromRegion) {
+        board[static_cast<BB::Type>(i)][fromRegionIdx] &= ~fromRegion;
+        board[static_cast<BB::Type>(i)][toRegionIdx] |= toRegion;
+      }
+    }
+    if (move.promotion) {
+      board[BB::Type::PROMOTED][toRegionIdx] |= toRegion;
+    }
+  } else {
+    int offset = move.from - WHITE_PAWN_DROP;
+    uint64_t addedValue = one << (4 * offset);
+    board.inHand.value -= addedValue;
+    board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
+    board[static_cast<BB::Type>(BB::Type::ALL_WHITE)][toRegionIdx] |= toRegion;
+  }
+}
+
+__host__ __device__ inline void makeMoveBlack(Board& board, Move move) {
+  uint64_t one = 1;
+  Region toRegionIdx = squareToRegion(static_cast<Square>(move.to));
+  uint32_t toRegion = 1 << (REGION_SIZE - 1 - move.to % REGION_SIZE);
+  if (move.from < SQUARE_SIZE) {
+    Region fromRegionIdx = squareToRegion(static_cast<Square>(move.from));
+    uint32_t fromRegion = 1 << (REGION_SIZE - 1 - move.from % REGION_SIZE);
+    for (int i = 0; i < BB::Type::KING; i++) {
+      if (board[static_cast<BB::Type>(i)][toRegionIdx] & toRegion) {
+        board[static_cast<BB::Type>(i)][toRegionIdx] &= ~toRegion;
+        uint64_t addedValue = one << (4 * (7 + i));
+        board.inHand.value += addedValue;
+      }
+      if (board[static_cast<BB::Type>(i)][fromRegionIdx] & fromRegion) {
+        board[static_cast<BB::Type>(i)][fromRegionIdx] &= ~fromRegion;
+        board[static_cast<BB::Type>(i)][toRegionIdx] |= toRegion;
+      }
+    }
+    for (int i = BB::Type::KING; i < BB::Type::SIZE; i++) {
+      if (board[static_cast<BB::Type>(i)][toRegionIdx] & toRegion) {
+        board[static_cast<BB::Type>(i)][toRegionIdx] &= ~toRegion;
+      }
+      if (board[static_cast<BB::Type>(i)][fromRegionIdx] & fromRegion) {
+        board[static_cast<BB::Type>(i)][fromRegionIdx] &= ~fromRegion;
+        board[static_cast<BB::Type>(i)][toRegionIdx] |= toRegion;
+      }
+    }
+    if (move.promotion) {
+      board[BB::Type::PROMOTED][toRegionIdx] |= toRegion;
+    }
+  } else {
+    int offset = move.from - WHITE_PAWN_DROP;
+    uint64_t addedValue = one << (4 * offset);
+    board.inHand.value -= addedValue;
+    board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
+    board[static_cast<BB::Type>(BB::Type::ALL_BLACK)][toRegionIdx] |= toRegion;
+  }
+}
+
 namespace CPU {
 const Bitboard& getRankAttacks(const Square& square, const Bitboard& occupied);
 const Bitboard& getFileAttacks(const Square& square, const Bitboard& occupied);
