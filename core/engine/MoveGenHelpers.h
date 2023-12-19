@@ -94,29 +94,6 @@ __host__ __device__ inline Bitboard getFullFile(int fileIdx) {
   return Bitboard(region, region, region);
 }
 
-__host__ __device__ inline uint32_t getRankBlockPattern(const Bitboard& bb,
-                                                        Square square) {
-  const uint32_t& region = bb[squareToRegion(square)];
-  uint32_t rowsBeforeInRegion = (square / BOARD_DIM) % 3;
-  uint32_t result = region << 5 << (rowsBeforeInRegion * BOARD_DIM) << 1 >> 25;
-  return result;
-}
-
-__host__ __device__ inline uint32_t getFileBlockPattern(
-    const Bitboard& occupied,
-    Square square) {
-  int offset = squareToFile(square);
-  uint32_t result = 0;
-  result |= isBitSet(occupied[TOP], 17 - offset) << 6;
-  result |= isBitSet(occupied[TOP], 8 - offset) << 5;
-  result |= isBitSet(occupied[MID], 26 - offset) << 4;
-  result |= isBitSet(occupied[MID], 17 - offset) << 3;
-  result |= isBitSet(occupied[MID], 8 - offset) << 2;
-  result |= isBitSet(occupied[BOTTOM], 26 - offset) << 1;
-  result |= isBitSet(occupied[BOTTOM], 17 - offset);
-  return result;
-}
-
 __host__ __device__ inline void makeMove(Board& board, Move move) {
   uint64_t one = 1;
   Region toRegionIdx = squareToRegion(static_cast<Square>(move.to));
@@ -158,7 +135,8 @@ __host__ __device__ inline void makeMove(Board& board, Move move) {
     uint64_t addedValue = one << (4 * offset);
     board.inHand.value -= addedValue;
     board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
-    board[static_cast<BB::Type>(BB::Type::ALL_WHITE)][toRegionIdx] |= toRegion;
+    board[static_cast<BB::Type>(BB::Type::ALL_WHITE)][toRegionIdx] |=
+    toRegion;
   }
 }
 
@@ -197,7 +175,8 @@ __host__ __device__ inline void makeMoveWhite(Board& board, Move move) {
     uint64_t addedValue = one << (4 * offset);
     board.inHand.value -= addedValue;
     board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
-    board[static_cast<BB::Type>(BB::Type::ALL_WHITE)][toRegionIdx] |= toRegion;
+    board[static_cast<BB::Type>(BB::Type::ALL_WHITE)][toRegionIdx] |=
+    toRegion;
   }
 }
 
@@ -236,26 +215,9 @@ __host__ __device__ inline void makeMoveBlack(Board& board, Move move) {
     uint64_t addedValue = one << (4 * offset);
     board.inHand.value -= addedValue;
     board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
-    board[static_cast<BB::Type>(BB::Type::ALL_BLACK)][toRegionIdx] |= toRegion;
+    board[static_cast<BB::Type>(BB::Type::ALL_BLACK)][toRegionIdx] |=
+    toRegion;
   }
 }
-
-namespace CPU {
-const Bitboard& getRankAttacks(const Square& square, const Bitboard& occupied);
-const Bitboard& getFileAttacks(const Square& square, const Bitboard& occupied);
-const Bitboard& getDiagRightAttacks(const Square& square,
-                                    const Bitboard& occupied);
-const Bitboard& getDiagLeftAttacks(const Square& square,
-                                   const Bitboard& occupied);
-const Bitboard& getRankMask(const uint32_t& rank);
-const Bitboard& getFileMask(const uint32_t& file);
-
-Bitboard* getRankAttacksPtr();
-Bitboard* getFileAttacksPtr();
-Bitboard* getDiagRightAttacksPtr();
-Bitboard* getDiagLeftAttacksPtr();
-Bitboard* getRankMaskPtr();
-Bitboard* getFileMaskPtr();
-}  // namespace CPU
 }  // namespace engine
 }  // namespace shogi

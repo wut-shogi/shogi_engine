@@ -1,12 +1,6 @@
+#include "../include/engine.h"
 #include <iostream>
-#include "GameTree.h"
-#include "engine.h"
-#include "MoveGen.h"
-#include "cpuInterface.h"
 #include "game.h"
-
-#include "gpuInterface.h"
-#include "MoveGenHelpers.h"
 namespace shogi {
 namespace engine {
 

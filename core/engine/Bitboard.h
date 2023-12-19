@@ -1,6 +1,4 @@
 #pragma once
-#define __CUDACC__
-#include <device_functions.h>
 #include <array>
 #include <bit>
 #include <bitset>
@@ -175,12 +173,18 @@ __host__ __device__ inline Bitboard operator~(const Bitboard& bb) {
           (~bb[BOTTOM]) & FULL_REGION};
 }
 
-__host__ inline uint32_t popcount(uint32_t value) {
-  return __popcnt(value);
+__host__ __device__ inline void setSquare(Bitboard& bb, const Square square) {
+  Region regionIdx = squareToRegion(square);
+  bb[regionIdx] |= 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
 }
 
-__device__ inline uint32_t d_popcount(uint32_t value) {
+
+__host__ __device__ inline uint32_t popcount(uint32_t value) {
+#ifdef __CUDA_ARCH__
   return __popc(value);
+#else
+  return __popcnt(value);
+#endif;
 }
 
 namespace Bitboards {
@@ -212,11 +216,6 @@ inline void print_BB(Bitboard src) {
   }
 }
 
-__host__ __device__ inline void setSquare(Bitboard& bb, const Square square) {
-  Region regionIdx = squareToRegion(square);
-  bb[regionIdx] |= 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
-}
-
 static const int MultiplyDeBruijnBitPosition[32] = {
     0,  1,  28, 2,  29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4,  8,
     31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6,  11, 5,  10, 9};
@@ -227,7 +226,6 @@ inline int ffs_host(uint32_t value) {
                                                  0x077CB531U)) >>
                                      27];
 }
-
 
 struct BitboardIterator {
  private:
@@ -244,7 +242,7 @@ struct BitboardIterator {
     squareOffset = 26;
     occupied = false;
   }
-  __host__ bool Next() {
+  __host__ __device__ bool Next() {
     while (bitboard[currentRegion] == 0) {
       if (currentRegion != BOTTOM) {
         currentRegion = static_cast<Region>(currentRegion + 1);
@@ -253,21 +251,11 @@ struct BitboardIterator {
         return false;
       }
     }
-    bitPos = ffs_host(bitboard[currentRegion]);
-    bitboard[currentRegion] &= ~(1 << bitPos);
-    return true;
-  }
-
-  __device__ bool d_Next() {
-    while (bitboard[currentRegion] == 0) {
-      if (currentRegion != BOTTOM) {
-        currentRegion = static_cast<Region>(currentRegion + 1);
-        squareOffset += REGION_SIZE;
-      } else {
-        return false;
-      }
-    }
+#ifdef __CUDA_ARCH__
     bitPos = __ffs(bitboard[currentRegion]) - 1;
+#else
+    bitPos = ffs_host(bitboard[currentRegion]);
+#endif
     bitboard[currentRegion] &= ~(1 << bitPos);
     return true;
   }

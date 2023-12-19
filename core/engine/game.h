@@ -4,6 +4,7 @@
 #include "GameTree.h"
 #include "MoveGenHelpers.h"
 #include "gpuInterface.h"
+#include "LookUpTables.h"
 
 namespace shogi {
 namespace engine {
@@ -11,7 +12,8 @@ namespace engine {
 class GameSimulator {
  public:
   void Run() {
-    GPU::initLookUpArrays();
+    LookUpTables::CPU::init();
+    LookUpTables::GPU::init();
     d_BufferSize = 1900000000;
     cudaError_t error = cudaMalloc((void**)&d_Buffer, d_BufferSize);
     board = Boards::STARTING_BOARD();

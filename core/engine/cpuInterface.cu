@@ -1,5 +1,6 @@
 #include "MoveGenHelpers.h"
 #include "cpuInterface.h"
+#include "LookUpTables.h"
 
 namespace shogi {
 namespace engine {
@@ -74,17 +75,17 @@ void CPU::countWhiteMoves(Board* inBoards,
     {
       pieces =
           board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] & notPromoted;
-      checkingPieces |= getFileAttacks(kingSquare, occupied) &
-                        ~getRankMask(squareToRank(kingSquare)) & pieces;
+      checkingPieces |= LookUpTables::getFileAttacks(kingSquare, occupied) &
+                        ~LookUpTables::getRankMask(squareToRank(kingSquare)) & pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        attacksFull = getFileAttacks(square, occupied);
+        attacksFull = LookUpTables::getFileAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = getRankMask(squareToRank(square));
+        mask = LookUpTables::getRankMask(squareToRank(square));
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::ALL_WHITE];
-          attacks = getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -97,8 +98,8 @@ void CPU::countWhiteMoves(Board* inBoards,
     // Rook and dragon
     {
       pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK];
-      checkingPieces |= (getRankAttacks(kingSquare, occupied) |
-                         getFileAttacks(kingSquare, occupied)) &
+      checkingPieces |= (LookUpTables::getRankAttacks(kingSquare, occupied) |
+                         LookUpTables::getFileAttacks(kingSquare, occupied)) &
                         pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -106,13 +107,13 @@ void CPU::countWhiteMoves(Board* inBoards,
         // Check if king is in check without white pieces
         // We have to check all 4 directions
         // left-right
-        attacksFull = getRankAttacks(square, occupied);
+        attacksFull = LookUpTables::getRankAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = getFileMask(squareToFile(square));
+        mask = LookUpTables::getFileMask(squareToFile(square));
         // left
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-          attacks = getRankAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getRankAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -122,7 +123,7 @@ void CPU::countWhiteMoves(Board* inBoards,
         // right
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-          attacks = getRankAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getRankAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -130,13 +131,13 @@ void CPU::countWhiteMoves(Board* inBoards,
           slidingChecksPaths |= attacksFull & ~mask;
         }
         // up-down
-        attacksFull = getFileAttacks(square, occupied);
+        attacksFull = LookUpTables::getFileAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = getRankMask(squareToRank(square));
+        mask = LookUpTables::getRankMask(squareToRank(square));
         // up
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-          attacks = getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -146,7 +147,7 @@ void CPU::countWhiteMoves(Board* inBoards,
         // down
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-          attacks = getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -159,8 +160,8 @@ void CPU::countWhiteMoves(Board* inBoards,
     // Bishop and horse pins
     {
       pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK];
-      checkingPieces |= (getDiagRightAttacks(kingSquare, occupied) |
-                         getDiagLeftAttacks(kingSquare, occupied)) &
+      checkingPieces |= (LookUpTables::getDiagRightAttacks(kingSquare, occupied) |
+                         LookUpTables::getDiagLeftAttacks(kingSquare, occupied)) &
                         pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -168,14 +169,14 @@ void CPU::countWhiteMoves(Board* inBoards,
         // Check if king is in check without white pieces
         // We have to check all 4 directions
         // right diag
-        attacksFull = getDiagRightAttacks(square, occupied);
+        attacksFull = LookUpTables::getDiagRightAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = ~getFileMask(squareToFile(square)) &
-               getRankMask(squareToRank(square));
+        mask = ~LookUpTables::getFileMask(squareToFile(square)) &
+               LookUpTables::getRankMask(squareToRank(square));
         // SW
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-          attacks = getDiagRightAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagRightAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -185,7 +186,7 @@ void CPU::countWhiteMoves(Board* inBoards,
         // NE
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-          attacks = getDiagRightAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagRightAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -193,14 +194,14 @@ void CPU::countWhiteMoves(Board* inBoards,
           slidingChecksPaths |= attacksFull & ~mask;
         }
         // left diag
-        attacksFull = getDiagLeftAttacks(square, occupied);
+        attacksFull = LookUpTables::getDiagLeftAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = getFileMask(squareToFile(square)) &
-               getRankMask(squareToRank(square));
+        mask = LookUpTables::getFileMask(squareToFile(square)) &
+               LookUpTables::getRankMask(squareToRank(square));
         // NW
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-          attacks = getDiagLeftAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagLeftAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -210,7 +211,7 @@ void CPU::countWhiteMoves(Board* inBoards,
         // SE
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-          attacks = getDiagLeftAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagLeftAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -353,8 +354,8 @@ void CPU::countWhiteMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = getFileAttacks(square, occupied) &
-                ~getRankMask(squareToRank(square)) & validMoves;
+        moves = LookUpTables::getFileAttacks(square, occupied) &
+                ~LookUpTables::getRankMask(squareToRank(square)) & validMoves;
         ourAttacks |= moves;
         numberOfMoves +=
             popcount(moves[TOP]) + popcount(moves[MID]) +
@@ -370,8 +371,8 @@ void CPU::countWhiteMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (getDiagRightAttacks(square, occupied) |
-                 getDiagLeftAttacks(square, occupied)) &
+        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
+                 LookUpTables::getDiagLeftAttacks(square, occupied)) &
                 validMoves;
         ourAttacks |= moves;
         if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
@@ -393,8 +394,8 @@ void CPU::countWhiteMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (getRankAttacks(square, occupied) |
-                 getFileAttacks(square, occupied)) &
+        moves = (LookUpTables::getRankAttacks(square, occupied) |
+                 LookUpTables::getFileAttacks(square, occupied)) &
                 validMoves;
         ourAttacks |= moves;
         if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
@@ -417,8 +418,8 @@ void CPU::countWhiteMoves(Board* inBoards,
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard horse = Bitboard(square);
-        moves = (getDiagRightAttacks(square, occupied) |
-                 getDiagLeftAttacks(square, occupied) | moveN(horse) |
+        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
+                 LookUpTables::getDiagLeftAttacks(square, occupied) | moveN(horse) |
                  moveE(horse) | moveS(horse) | moveW(horse)) &
                 validMoves;
         ourAttacks |= moves;
@@ -435,8 +436,8 @@ void CPU::countWhiteMoves(Board* inBoards,
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard dragon(square);
-        moves = (getRankAttacks(square, occupied) |
-                 getFileAttacks(square, occupied) | moveNW(dragon) |
+        moves = (LookUpTables::getRankAttacks(square, occupied) |
+                 LookUpTables::getFileAttacks(square, occupied) | moveNW(dragon) |
                  moveNE(dragon) | moveSE(dragon) | moveSW(dragon)) &
                 validMoves;
         ourAttacks |= moves;
@@ -584,17 +585,17 @@ void CPU::countBlackMoves(Board* inBoards,
     {
       pieces =
           board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] & notPromoted;
-      checkingPieces |= getFileAttacks(kingSquare, occupied) &
-                        getRankMask(squareToRank(kingSquare)) & pieces;
+      checkingPieces |= LookUpTables::getFileAttacks(kingSquare, occupied) &
+                        LookUpTables::getRankMask(squareToRank(kingSquare)) & pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        attacksFull = getFileAttacks(square, occupied);
+        attacksFull = LookUpTables::getFileAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = ~getRankMask(squareToRank(square));
+        mask = ~LookUpTables::getRankMask(squareToRank(square));
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::ALL_BLACK];
-          attacks = getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -607,8 +608,8 @@ void CPU::countBlackMoves(Board* inBoards,
     // Rook and dragon
     {
       pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE];
-      checkingPieces |= (getRankAttacks(kingSquare, occupied) |
-                         getFileAttacks(kingSquare, occupied)) &
+      checkingPieces |= (LookUpTables::getRankAttacks(kingSquare, occupied) |
+                         LookUpTables::getFileAttacks(kingSquare, occupied)) &
                         pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -616,13 +617,13 @@ void CPU::countBlackMoves(Board* inBoards,
         // Check if king is in check without white pieces
         // We have to check all 4 directions
         // left-right
-        attacksFull = getRankAttacks(square, occupied);
+        attacksFull = LookUpTables::getRankAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = getFileMask(squareToFile(square));
+        mask = LookUpTables::getFileMask(squareToFile(square));
         // left
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-          attacks = getRankAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getRankAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -632,7 +633,7 @@ void CPU::countBlackMoves(Board* inBoards,
         // right
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-          attacks = getRankAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getRankAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -640,13 +641,13 @@ void CPU::countBlackMoves(Board* inBoards,
           slidingChecksPaths |= attacksFull & ~mask;
         }
         // up-down
-        attacksFull = getFileAttacks(square, occupied);
+        attacksFull = LookUpTables::getFileAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = getRankMask(squareToRank(square));
+        mask = LookUpTables::getRankMask(squareToRank(square));
         // up
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-          attacks = getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -656,7 +657,7 @@ void CPU::countBlackMoves(Board* inBoards,
         // down
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-          attacks = getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -669,8 +670,8 @@ void CPU::countBlackMoves(Board* inBoards,
     // Bishop and horse pins
     {
       pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE];
-      checkingPieces |= (getDiagRightAttacks(kingSquare, occupied) |
-                         getDiagLeftAttacks(kingSquare, occupied)) &
+      checkingPieces |= (LookUpTables::getDiagRightAttacks(kingSquare, occupied) |
+                         LookUpTables::getDiagLeftAttacks(kingSquare, occupied)) &
                         pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -678,14 +679,14 @@ void CPU::countBlackMoves(Board* inBoards,
         // Check if king is in check without white pieces
         // We have to check all 4 directions
         // right diag
-        attacksFull = getDiagRightAttacks(square, occupied);
+        attacksFull = LookUpTables::getDiagRightAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = ~getFileMask(squareToFile(square)) &
-               getRankMask(squareToRank(square));
+        mask = ~LookUpTables::getFileMask(squareToFile(square)) &
+               LookUpTables::getRankMask(squareToRank(square));
         // SW
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-          attacks = getDiagRightAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagRightAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -695,7 +696,7 @@ void CPU::countBlackMoves(Board* inBoards,
         // NE
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-          attacks = getDiagRightAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagRightAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -703,14 +704,14 @@ void CPU::countBlackMoves(Board* inBoards,
           slidingChecksPaths |= attacksFull & ~mask;
         }
         // left diag
-        attacksFull = getDiagLeftAttacks(square, occupied);
+        attacksFull = LookUpTables::getDiagLeftAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = getFileMask(squareToFile(square)) &
-               getRankMask(squareToRank(square));
+        mask = LookUpTables::getFileMask(squareToFile(square)) &
+               LookUpTables::getRankMask(squareToRank(square));
         // NW
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-          attacks = getDiagLeftAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagLeftAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -720,7 +721,7 @@ void CPU::countBlackMoves(Board* inBoards,
         // SE
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-          attacks = getDiagLeftAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagLeftAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -862,8 +863,8 @@ void CPU::countBlackMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = getFileAttacks(square, occupied) &
-                getRankMask(squareToRank(square)) & validMoves;
+        moves = LookUpTables::getFileAttacks(square, occupied) &
+                LookUpTables::getRankMask(squareToRank(square)) & validMoves;
         ourAttacks |= moves;
         numberOfMoves += popcount(moves[TOP] & TOP_RANK) +  // forced promotions
                          popcount(moves[TOP] & ~TOP_RANK) * 2 +  // promotions
@@ -878,8 +879,8 @@ void CPU::countBlackMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (getDiagRightAttacks(square, occupied) |
-                 getDiagLeftAttacks(square, occupied)) &
+        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
+                 LookUpTables::getDiagLeftAttacks(square, occupied)) &
                 validMoves;
         ourAttacks |= moves;
         if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
@@ -900,8 +901,8 @@ void CPU::countBlackMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (getRankAttacks(square, occupied) |
-                 getFileAttacks(square, occupied)) &
+        moves = (LookUpTables::getRankAttacks(square, occupied) |
+                 LookUpTables::getFileAttacks(square, occupied)) &
                 validMoves;
         ourAttacks |= moves;
         if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
@@ -923,8 +924,8 @@ void CPU::countBlackMoves(Board* inBoards,
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard horse = Bitboard(square);
-        moves = (getDiagRightAttacks(square, occupied) |
-                 getDiagLeftAttacks(square, occupied) | moveN(horse) |
+        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
+                 LookUpTables::getDiagLeftAttacks(square, occupied) | moveN(horse) |
                  moveE(horse) | moveS(horse) | moveW(horse)) &
                 validMoves;
         ourAttacks |= moves;
@@ -941,8 +942,8 @@ void CPU::countBlackMoves(Board* inBoards,
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard dragon(square);
-        moves = (getRankAttacks(square, occupied) |
-                 getFileAttacks(square, occupied) | moveNW(dragon) |
+        moves = (LookUpTables::getRankAttacks(square, occupied) |
+                 LookUpTables::getFileAttacks(square, occupied) | moveNW(dragon) |
                  moveNE(dragon) | moveSE(dragon) | moveSW(dragon)) &
                 validMoves;
         ourAttacks |= moves;
@@ -1316,8 +1317,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = getFileAttacks(static_cast<Square>(move.from), occupied) &
-                ~getRankMask(squareToRank(static_cast<Square>(move.from))) &
+        moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied) &
+                ~LookUpTables::getRankMask(squareToRank(static_cast<Square>(move.from))) &
                 validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -1350,8 +1351,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
-                 getDiagLeftAttacks(static_cast<Square>(move.from), occupied)) &
+        moves = (LookUpTables::getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from), occupied)) &
                 validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -1382,8 +1383,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (getRankAttacks(static_cast<Square>(move.from), occupied) |
-                 getFileAttacks(static_cast<Square>(move.from), occupied)) &
+        moves = (LookUpTables::getRankAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied)) &
                 validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -1416,8 +1417,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
         Bitboard horse(static_cast<Square>(move.from));
-        moves = (getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
-                 getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
+        moves = (LookUpTables::getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
                  moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
                 validMoves;
         ourAttacks |= moves;
@@ -1440,8 +1441,8 @@ void CPU::generateWhiteMoves(Board* inBoards,
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
         Bitboard dragon(static_cast<Square>(move.from));
-        moves = (getRankAttacks(static_cast<Square>(move.from), occupied) |
-                 getFileAttacks(static_cast<Square>(move.from), occupied) |
+        moves = (LookUpTables::getRankAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied) |
                  moveNW(pieces) | moveNE(pieces) | moveSE(pieces) |
                  moveSW(pieces)) &
                 validMoves;
@@ -1887,8 +1888,8 @@ void CPU::generateBlackMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = getFileAttacks(static_cast<Square>(move.from), occupied) &
-                getRankMask(squareToRank(static_cast<Square>(move.from))) &
+        moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied) &
+                LookUpTables::getRankMask(squareToRank(static_cast<Square>(move.from))) &
                 validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -1920,8 +1921,8 @@ void CPU::generateBlackMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
-                 getDiagLeftAttacks(static_cast<Square>(move.from), occupied)) &
+        moves = (LookUpTables::getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from), occupied)) &
                 validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -1951,8 +1952,8 @@ void CPU::generateBlackMoves(Board* inBoards,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (getRankAttacks(static_cast<Square>(move.from), occupied) |
-                 getFileAttacks(static_cast<Square>(move.from), occupied)) &
+        moves = (LookUpTables::getRankAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied)) &
                 validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -1984,8 +1985,8 @@ void CPU::generateBlackMoves(Board* inBoards,
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
         Bitboard horse(static_cast<Square>(move.from));
-        moves = (getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
-                 getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
+        moves = (LookUpTables::getDiagRightAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
                  moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
                 validMoves;
         ourAttacks |= moves;
@@ -2007,8 +2008,8 @@ void CPU::generateBlackMoves(Board* inBoards,
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
         Bitboard dragon(static_cast<Square>(move.from));
-        moves = (getRankAttacks(static_cast<Square>(move.from), occupied) |
-                 getFileAttacks(static_cast<Square>(move.from), occupied) |
+        moves = (LookUpTables::getRankAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied) |
                  moveNW(dragon) | moveNE(dragon) | moveSE(dragon) |
                  moveSW(dragon)) &
                 validMoves;
@@ -2525,17 +2526,17 @@ void CPU::countWhiteMoves(uint32_t size,
     {
       pieces =
           board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] & notPromoted;
-      checkingPieces |= CPU::getFileAttacks(kingSquare, occupied) &
-                        ~CPU::getRankMask(squareToRank(kingSquare)) & pieces;
+      checkingPieces |= LookUpTables::getFileAttacks(kingSquare, occupied) &
+                        ~LookUpTables::getRankMask(squareToRank(kingSquare)) & pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        attacksFull = CPU::getFileAttacks(square, occupied);
+        attacksFull = LookUpTables::getFileAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = CPU::getRankMask(squareToRank(square));
+        mask = LookUpTables::getRankMask(squareToRank(square));
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::ALL_WHITE];
-          attacks = CPU::getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -2548,8 +2549,8 @@ void CPU::countWhiteMoves(uint32_t size,
     // Rook and dragon
     {
       pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK];
-      checkingPieces |= (CPU::getRankAttacks(kingSquare, occupied) |
-                         CPU::getFileAttacks(kingSquare, occupied)) &
+      checkingPieces |= (LookUpTables::getRankAttacks(kingSquare, occupied) |
+                         LookUpTables::getFileAttacks(kingSquare, occupied)) &
                         pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -2557,13 +2558,13 @@ void CPU::countWhiteMoves(uint32_t size,
         // Check if king is in check without white pieces
         // We have to check all 4 directions
         // left-right
-        attacksFull = CPU::getRankAttacks(square, occupied);
+        attacksFull = LookUpTables::getRankAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = CPU::getFileMask(squareToFile(square));
+        mask = LookUpTables::getFileMask(squareToFile(square));
         // left
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-          attacks = CPU::getRankAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getRankAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -2573,7 +2574,7 @@ void CPU::countWhiteMoves(uint32_t size,
         // right
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-          attacks = CPU::getRankAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getRankAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -2581,13 +2582,13 @@ void CPU::countWhiteMoves(uint32_t size,
           slidingChecksPaths |= attacksFull & ~mask;
         }
         // up-down
-        attacksFull = CPU::getFileAttacks(square, occupied);
+        attacksFull = LookUpTables::getFileAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = CPU::getRankMask(squareToRank(square));
+        mask = LookUpTables::getRankMask(squareToRank(square));
         // up
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-          attacks = CPU::getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -2597,7 +2598,7 @@ void CPU::countWhiteMoves(uint32_t size,
         // down
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-          attacks = CPU::getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -2610,8 +2611,8 @@ void CPU::countWhiteMoves(uint32_t size,
     // Bishop and horse pins
     {
       pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK];
-      checkingPieces |= (CPU::getDiagRightAttacks(kingSquare, occupied) |
-                         CPU::getDiagLeftAttacks(kingSquare, occupied)) &
+      checkingPieces |= (LookUpTables::getDiagRightAttacks(kingSquare, occupied) |
+                         LookUpTables::getDiagLeftAttacks(kingSquare, occupied)) &
                         pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -2619,14 +2620,14 @@ void CPU::countWhiteMoves(uint32_t size,
         // Check if king is in check without white pieces
         // We have to check all 4 directions
         // right diag
-        attacksFull = CPU::getDiagRightAttacks(square, occupied);
+        attacksFull = LookUpTables::getDiagRightAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = ~CPU::getFileMask(squareToFile(square)) &
-               CPU::getRankMask(squareToRank(square));
+        mask = ~LookUpTables::getFileMask(squareToFile(square)) &
+               LookUpTables::getRankMask(squareToRank(square));
         // SW
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-          attacks = CPU::getDiagRightAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagRightAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -2636,7 +2637,7 @@ void CPU::countWhiteMoves(uint32_t size,
         // NE
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-          attacks = CPU::getDiagRightAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagRightAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -2644,14 +2645,14 @@ void CPU::countWhiteMoves(uint32_t size,
           slidingChecksPaths |= attacksFull & ~mask;
         }
         // left diag
-        attacksFull = CPU::getDiagLeftAttacks(square, occupied);
+        attacksFull = LookUpTables::getDiagLeftAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = CPU::getFileMask(squareToFile(square)) &
-               CPU::getRankMask(squareToRank(square));
+        mask = LookUpTables::getFileMask(squareToFile(square)) &
+               LookUpTables::getRankMask(squareToRank(square));
         // NW
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & mask;
-          attacks = CPU::getDiagLeftAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagLeftAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -2661,7 +2662,7 @@ void CPU::countWhiteMoves(uint32_t size,
         // SE
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_WHITE] & ~mask;
-          attacks = CPU::getDiagLeftAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagLeftAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -2804,8 +2805,8 @@ void CPU::countWhiteMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = CPU::getFileAttacks(square, occupied) &
-                ~CPU::getRankMask(squareToRank(square)) & validMoves;
+        moves = LookUpTables::getFileAttacks(square, occupied) &
+                ~LookUpTables::getRankMask(squareToRank(square)) & validMoves;
         ourAttacks |= moves;
         numberOfMoves +=
             popcount(moves[TOP]) + popcount(moves[MID]) +
@@ -2821,8 +2822,8 @@ void CPU::countWhiteMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (CPU::getDiagRightAttacks(square, occupied) |
-                 CPU::getDiagLeftAttacks(square, occupied)) &
+        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
+                 LookUpTables::getDiagLeftAttacks(square, occupied)) &
                 validMoves;
         ourAttacks |= moves;
         if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
@@ -2844,8 +2845,8 @@ void CPU::countWhiteMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (CPU::getRankAttacks(square, occupied) |
-                 CPU::getFileAttacks(square, occupied)) &
+        moves = (LookUpTables::getRankAttacks(square, occupied) |
+                 LookUpTables::getFileAttacks(square, occupied)) &
                 validMoves;
         ourAttacks |= moves;
         if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
@@ -2868,8 +2869,8 @@ void CPU::countWhiteMoves(uint32_t size,
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard horse = Bitboard(square);
-        moves = (CPU::getDiagRightAttacks(square, occupied) |
-                 CPU::getDiagLeftAttacks(square, occupied) | moveN(horse) |
+        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
+                 LookUpTables::getDiagLeftAttacks(square, occupied) | moveN(horse) |
                  moveE(horse) | moveS(horse) | moveW(horse)) &
                 validMoves;
         ourAttacks |= moves;
@@ -2886,8 +2887,8 @@ void CPU::countWhiteMoves(uint32_t size,
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard dragon(square);
-        moves = (CPU::getRankAttacks(square, occupied) |
-                 CPU::getFileAttacks(square, occupied) | moveNW(dragon) |
+        moves = (LookUpTables::getRankAttacks(square, occupied) |
+                 LookUpTables::getFileAttacks(square, occupied) | moveNW(dragon) |
                  moveNE(dragon) | moveSE(dragon) | moveSW(dragon)) &
                 validMoves;
         ourAttacks |= moves;
@@ -3040,17 +3041,17 @@ void CPU::countBlackMoves(uint32_t size,
     {
       pieces =
           board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] & notPromoted;
-      checkingPieces |= CPU::getFileAttacks(kingSquare, occupied) &
-                        CPU::getRankMask(squareToRank(kingSquare)) & pieces;
+      checkingPieces |= LookUpTables::getFileAttacks(kingSquare, occupied) &
+                        LookUpTables::getRankMask(squareToRank(kingSquare)) & pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        attacksFull = CPU::getFileAttacks(square, occupied);
+        attacksFull = LookUpTables::getFileAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = ~CPU::getRankMask(squareToRank(square));
+        mask = ~LookUpTables::getRankMask(squareToRank(square));
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::ALL_BLACK];
-          attacks = CPU::getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -3063,8 +3064,8 @@ void CPU::countBlackMoves(uint32_t size,
     // Rook and dragon
     {
       pieces = board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE];
-      checkingPieces |= (CPU::getRankAttacks(kingSquare, occupied) |
-                         CPU::getFileAttacks(kingSquare, occupied)) &
+      checkingPieces |= (LookUpTables::getRankAttacks(kingSquare, occupied) |
+                         LookUpTables::getFileAttacks(kingSquare, occupied)) &
                         pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -3072,13 +3073,13 @@ void CPU::countBlackMoves(uint32_t size,
         // Check if king is in check without white pieces
         // We have to check all 4 directions
         // left-right
-        attacksFull = CPU::getRankAttacks(square, occupied);
+        attacksFull = LookUpTables::getRankAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = CPU::getFileMask(squareToFile(square));
+        mask = LookUpTables::getFileMask(squareToFile(square));
         // left
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-          attacks = CPU::getRankAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getRankAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -3088,7 +3089,7 @@ void CPU::countBlackMoves(uint32_t size,
         // right
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-          attacks = CPU::getRankAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getRankAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -3096,13 +3097,13 @@ void CPU::countBlackMoves(uint32_t size,
           slidingChecksPaths |= attacksFull & ~mask;
         }
         // up-down
-        attacksFull = CPU::getFileAttacks(square, occupied);
+        attacksFull = LookUpTables::getFileAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = CPU::getRankMask(squareToRank(square));
+        mask = LookUpTables::getRankMask(squareToRank(square));
         // up
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-          attacks = CPU::getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -3112,7 +3113,7 @@ void CPU::countBlackMoves(uint32_t size,
         // down
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-          attacks = CPU::getFileAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -3125,8 +3126,8 @@ void CPU::countBlackMoves(uint32_t size,
     // Bishop and horse pins
     {
       pieces = board[BB::Type::BISHOP] & board[BB::Type::ALL_WHITE];
-      checkingPieces |= (CPU::getDiagRightAttacks(kingSquare, occupied) |
-                         CPU::getDiagLeftAttacks(kingSquare, occupied)) &
+      checkingPieces |= (LookUpTables::getDiagRightAttacks(kingSquare, occupied) |
+                         LookUpTables::getDiagLeftAttacks(kingSquare, occupied)) &
                         pieces;
       iterator.Init(pieces);
       while (iterator.Next()) {
@@ -3134,14 +3135,14 @@ void CPU::countBlackMoves(uint32_t size,
         // Check if king is in check without white pieces
         // We have to check all 4 directions
         // right diag
-        attacksFull = CPU::getDiagRightAttacks(square, occupied);
+        attacksFull = LookUpTables::getDiagRightAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = ~CPU::getFileMask(squareToFile(square)) &
-               CPU::getRankMask(squareToRank(square));
+        mask = ~LookUpTables::getFileMask(squareToFile(square)) &
+               LookUpTables::getRankMask(squareToRank(square));
         // SW
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-          attacks = CPU::getDiagRightAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagRightAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -3151,7 +3152,7 @@ void CPU::countBlackMoves(uint32_t size,
         // NE
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-          attacks = CPU::getDiagRightAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagRightAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -3159,14 +3160,14 @@ void CPU::countBlackMoves(uint32_t size,
           slidingChecksPaths |= attacksFull & ~mask;
         }
         // left diag
-        attacksFull = CPU::getDiagLeftAttacks(square, occupied);
+        attacksFull = LookUpTables::getDiagLeftAttacks(square, occupied);
         attacked |= attacksFull;
-        mask = CPU::getFileMask(squareToFile(square)) &
-               CPU::getRankMask(squareToRank(square));
+        mask = LookUpTables::getFileMask(squareToFile(square)) &
+               LookUpTables::getRankMask(squareToRank(square));
         // NW
         if (!(attacksFull & king & mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & mask;
-          attacks = CPU::getDiagLeftAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagLeftAttacks(square, occupied & ~potentialPin);
           if (attacks & king & mask) {
             pinned |= potentialPin;
           }
@@ -3176,7 +3177,7 @@ void CPU::countBlackMoves(uint32_t size,
         // SE
         if (!(attacksFull & king & ~mask)) {
           potentialPin = attacksFull & board[BB::Type::ALL_BLACK] & ~mask;
-          attacks = CPU::getDiagLeftAttacks(square, occupied & ~potentialPin);
+          attacks = LookUpTables::getDiagLeftAttacks(square, occupied & ~potentialPin);
           if (attacks & king & ~mask) {
             pinned |= potentialPin;
           }
@@ -3318,8 +3319,8 @@ void CPU::countBlackMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = CPU::getFileAttacks(square, occupied) &
-                CPU::getRankMask(squareToRank(square)) & validMoves;
+        moves = LookUpTables::getFileAttacks(square, occupied) &
+                LookUpTables::getRankMask(squareToRank(square)) & validMoves;
         ourAttacks |= moves;
         numberOfMoves += popcount(moves[TOP] & TOP_RANK) +  // forced promotions
                          popcount(moves[TOP] & ~TOP_RANK) * 2 +  // promotions
@@ -3334,8 +3335,8 @@ void CPU::countBlackMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (CPU::getDiagRightAttacks(square, occupied) |
-                 CPU::getDiagLeftAttacks(square, occupied)) &
+        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
+                 LookUpTables::getDiagLeftAttacks(square, occupied)) &
                 validMoves;
         ourAttacks |= moves;
         if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
@@ -3356,8 +3357,8 @@ void CPU::countBlackMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (CPU::getRankAttacks(square, occupied) |
-                 CPU::getFileAttacks(square, occupied)) &
+        moves = (LookUpTables::getRankAttacks(square, occupied) |
+                 LookUpTables::getFileAttacks(square, occupied)) &
                 validMoves;
         ourAttacks |= moves;
         if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
@@ -3379,8 +3380,8 @@ void CPU::countBlackMoves(uint32_t size,
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard horse = Bitboard(square);
-        moves = (CPU::getDiagRightAttacks(square, occupied) |
-                 CPU::getDiagLeftAttacks(square, occupied) | moveN(horse) |
+        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
+                 LookUpTables::getDiagLeftAttacks(square, occupied) | moveN(horse) |
                  moveE(horse) | moveS(horse) | moveW(horse)) &
                 validMoves;
         ourAttacks |= moves;
@@ -3397,8 +3398,8 @@ void CPU::countBlackMoves(uint32_t size,
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard dragon(square);
-        moves = (CPU::getRankAttacks(square, occupied) |
-                 CPU::getFileAttacks(square, occupied) | moveNW(dragon) |
+        moves = (LookUpTables::getRankAttacks(square, occupied) |
+                 LookUpTables::getFileAttacks(square, occupied) | moveNW(dragon) |
                  moveNE(dragon) | moveSE(dragon) | moveSW(dragon)) &
                 validMoves;
         ourAttacks |= moves;
@@ -3735,8 +3736,8 @@ void CPU::generateWhiteMoves(uint32_t size,
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
         moves =
-            CPU::getFileAttacks(static_cast<Square>(move.from), occupied) &
-            ~CPU::getRankMask(squareToRank(static_cast<Square>(move.from))) &
+            LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied) &
+            ~LookUpTables::getRankMask(squareToRank(static_cast<Square>(move.from))) &
             validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -3765,9 +3766,9 @@ void CPU::generateWhiteMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (CPU::getDiagRightAttacks(static_cast<Square>(move.from),
+        moves = (LookUpTables::getDiagRightAttacks(static_cast<Square>(move.from),
                                           occupied) |
-                 CPU::getDiagLeftAttacks(static_cast<Square>(move.from),
+                 LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from),
                                          occupied)) &
                 validMoves;
         ourAttacks |= moves;
@@ -3796,8 +3797,8 @@ void CPU::generateWhiteMoves(uint32_t size,
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
         moves =
-            (CPU::getRankAttacks(static_cast<Square>(move.from), occupied) |
-             CPU::getFileAttacks(static_cast<Square>(move.from), occupied)) &
+            (LookUpTables::getRankAttacks(static_cast<Square>(move.from), occupied) |
+             LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied)) &
             validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -3827,9 +3828,9 @@ void CPU::generateWhiteMoves(uint32_t size,
         move.from = iterator.GetCurrentSquare();
         Bitboard horse(static_cast<Square>(move.from));
         moves =
-            (CPU::getDiagRightAttacks(static_cast<Square>(move.from),
+            (LookUpTables::getDiagRightAttacks(static_cast<Square>(move.from),
                                       occupied) |
-             CPU::getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
+             LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
              moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
             validMoves;
         ourAttacks |= moves;
@@ -3850,8 +3851,8 @@ void CPU::generateWhiteMoves(uint32_t size,
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
         Bitboard dragon(static_cast<Square>(move.from));
-        moves = (CPU::getRankAttacks(static_cast<Square>(move.from), occupied) |
-                 CPU::getFileAttacks(static_cast<Square>(move.from), occupied) |
+        moves = (LookUpTables::getRankAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied) |
                  moveNW(pieces) | moveNE(pieces) | moveSE(pieces) |
                  moveSW(pieces)) &
                 validMoves;
@@ -4243,8 +4244,8 @@ void CPU::generateBlackMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = CPU::getFileAttacks(static_cast<Square>(move.from), occupied) &
-                CPU::getRankMask(squareToRank(static_cast<Square>(move.from))) &
+        moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied) &
+                LookUpTables::getRankMask(squareToRank(static_cast<Square>(move.from))) &
                 validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -4272,9 +4273,9 @@ void CPU::generateBlackMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (CPU::getDiagRightAttacks(static_cast<Square>(move.from),
+        moves = (LookUpTables::getDiagRightAttacks(static_cast<Square>(move.from),
                                           occupied) |
-                 CPU::getDiagLeftAttacks(static_cast<Square>(move.from),
+                 LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from),
                                          occupied)) &
                 validMoves;
         ourAttacks |= moves;
@@ -4301,8 +4302,8 @@ void CPU::generateBlackMoves(uint32_t size,
       iterator.Init(pieces);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (CPU::getRankAttacks(static_cast<Square>(move.from), occupied) |
-             CPU::getFileAttacks(static_cast<Square>(move.from), occupied)) &
+        moves = (LookUpTables::getRankAttacks(static_cast<Square>(move.from), occupied) |
+             LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied)) &
                 validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
@@ -4330,9 +4331,9 @@ void CPU::generateBlackMoves(uint32_t size,
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
         Bitboard horse(static_cast<Square>(move.from));
-        moves = (CPU::getDiagRightAttacks(static_cast<Square>(move.from),
+        moves = (LookUpTables::getDiagRightAttacks(static_cast<Square>(move.from),
                                           occupied) |
-             CPU::getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
+             LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from), occupied) |
                  moveN(horse) | moveE(horse) | moveS(horse) | moveW(horse)) &
                 validMoves;
         ourAttacks |= moves;
@@ -4352,8 +4353,8 @@ void CPU::generateBlackMoves(uint32_t size,
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
         Bitboard dragon(static_cast<Square>(move.from));
-        moves = (CPU::getRankAttacks(static_cast<Square>(move.from), occupied) |
-                 CPU::getFileAttacks(static_cast<Square>(move.from), occupied) |
+        moves = (LookUpTables::getRankAttacks(static_cast<Square>(move.from), occupied) |
+                 LookUpTables::getFileAttacks(static_cast<Square>(move.from), occupied) |
                  moveNW(dragon) | moveNE(dragon) | moveSE(dragon) |
                  moveSW(dragon)) &
                 validMoves;

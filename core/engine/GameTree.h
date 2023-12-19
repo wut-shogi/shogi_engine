@@ -22,11 +22,7 @@ class GameTree {
     m_validMoves = new Bitboard[m_maxProcessedSize];
     m_attackedByEnemy = new Bitboard[m_maxProcessedSize];
   }
-  Move FindBestMove();
-
-  static std::vector<Move> GetAllMovesFrom(const Board& board, bool isWhite);
-
-  int16_t SearchNode(TreeNode& node);
+  
 
  private:
   Board m_startingBoard;
