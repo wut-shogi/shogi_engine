@@ -191,7 +191,9 @@ __device__ const Bitboard& getFileMask(const uint32_t& file) {
 }  // namespace GPU
 
 int calculateNumberOfBlocks(uint32_t size) {
-  return (int)ceil(size / (double)THREADS_COUNT);
+  int numberOfBlocks = (int)ceil(size / (double)THREADS_COUNT);
+  std::cout << "Number of blocks: " << numberOfBlocks << std::endl;
+  return numberOfBlocks;
 }
 
 __global__ void countWhiteMovesKernel(Board* inBoards,
@@ -2691,7 +2693,7 @@ int GPU::countBlackMoves(thrust::device_ptr<Board> inBoards,
 }
 
 int GPU::prefixSum(uint32_t* inValues, uint32_t inValuesLength) {
-  thrust::inclusive_scan(thrust::device, inValues, inValues + inValuesLength,
+  thrust::exclusive_scan(thrust::device, inValues, inValues + inValuesLength,
                          inValues);
   cudaError_t cudaStatus;
   cudaStatus = cudaGetLastError();
@@ -2858,7 +2860,7 @@ int GPU::evaluateBoards(thrust::device_ptr<Board> inBoards,
 
 __global__ void countWhiteMovesKernel(uint32_t size,
                                       int16_t movesPerBoard,
-                                      const Board& startBoard,
+                                      Board* startBoard,
                                       Move* inMoves,
                                       uint32_t* outOffsets,
                                       uint32_t* outBitboards) {
@@ -2866,11 +2868,11 @@ __global__ void countWhiteMovesKernel(uint32_t size,
   if (index >= size)
     return;
 
-  Board board = startBoard;
+  Board board = *startBoard;
   for (int m = 0; m < movesPerBoard; m++) {
-    makeMoveWhite(board, inMoves[m * size + index]);
+    Move move = inMoves[m * size + index];
+    makeMove(board, inMoves[m * size + index]);
   }
-
   Bitboard king = board[BB::Type::KING] & board[BB::Type::ALL_WHITE];
   Bitboard notPromoted = ~board[BB::Type::PROMOTED];
   Bitboard checkingPieces, attacked, pieces, moves, slidingChecksPaths, attacks,
@@ -3362,25 +3364,22 @@ __global__ void countWhiteMovesKernel(uint32_t size,
         (d_popcount(legalDropSpots[TOP]) + d_popcount(legalDropSpots[MID]) +
          d_popcount(legalDropSpots[BOTTOM]));
   }
-
   outOffsets[index] = numberOfMoves;
 }
 
 __global__ void countBlackMovesKernel(uint32_t size,
                                       int16_t movesPerBoard,
-                                      const Board& startBoard,
+                                      Board* startBoard,
                                       Move* inMoves,
                                       uint32_t* outOffsets,
                                       uint32_t* outBitboards) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= size)
     return;
-
-  Board board = startBoard;
+  Board board = *startBoard;
   for (int m = 0; m < movesPerBoard; m++) {
-    makeMoveWhite(board, inMoves[m * size + index]);
+    makeMove(board, inMoves[m * size + index]);
   }
-
   Bitboard king = board[BB::Type::KING] & board[BB::Type::ALL_BLACK];
   Bitboard notPromoted = ~board[BB::Type::PROMOTED];
   Bitboard checkingPieces, attacked, pieces, moves, slidingChecksPaths, attacks,
@@ -3431,7 +3430,6 @@ __global__ void countBlackMovesKernel(uint32_t size,
   checkingPieces |=
       (moveNW(king) | moveNE(king) | moveSE(king) | moveSW(king)) & pieces;
   attacked |= moveNW(pieces) | moveNE(pieces) | moveSE(pieces) | moveSW(pieces);
-
   // Sliding pieces
   iterator.Init(king);
   iterator.d_Next();
@@ -3606,7 +3604,6 @@ __global__ void countBlackMovesKernel(uint32_t size,
     // piece)
     validMoves = ~board[BB::Type::ALL_BLACK];
   }
-
   outBitboards[index] = validMoves[TOP];
   outBitboards[size + index] = validMoves[MID];
   outBitboards[2 * size + index] = validMoves[BOTTOM];
@@ -3616,7 +3613,6 @@ __global__ void countBlackMovesKernel(uint32_t size,
   outBitboards[6 * size + index] = pinned[TOP];
   outBitboards[7 * size + index] = pinned[MID];
   outBitboards[8 * size + index] = pinned[BOTTOM];
-
   // Pawn moves
   {
     pieces = ~pinned & board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
@@ -3867,13 +3863,12 @@ __global__ void countBlackMovesKernel(uint32_t size,
         (d_popcount(legalDropSpots[TOP]) + d_popcount(legalDropSpots[MID]) +
          d_popcount(legalDropSpots[BOTTOM]));
   }
-
   outOffsets[index] = numberOfMoves;
 }
 
 __global__ void generateWhiteMovesKernel(uint32_t size,
                                          int16_t movesPerBoard,
-                                         const Board& startBoard,
+                                         Board* startBoard,
                                          Move* inMoves,
                                          uint32_t* inOffsets,
                                          uint32_t* inBitboards,
@@ -3882,11 +3877,18 @@ __global__ void generateWhiteMovesKernel(uint32_t size,
   if (index >= size)
     return;
 
-  Board board = startBoard;
+  Board board = *startBoard;
+  uint32_t movesOffset = inOffsets[index];
+  uint32_t numberOfMoves = inOffsets[index + 1] - movesOffset;
+  uint32_t allMovesSize = inOffsets[size] - inOffsets[0];
   for (int m = 0; m < movesPerBoard; m++) {
-    makeMoveWhite(board, inMoves[m * size + index]);
+    Move move = inMoves[m * size + index];
+    makeMove(board, move);
+    for (int i = 0; i < numberOfMoves; i++) {
+      outMoves[movesOffset + i] = move;
+    }
+    movesOffset += allMovesSize;
   }
-
   Bitboard validMoves, pinned, attackedByEnemy;
   validMoves[TOP] = inBitboards[index];
   validMoves[MID] = inBitboards[size + index];
@@ -3902,7 +3904,6 @@ __global__ void generateWhiteMovesKernel(uint32_t size,
   Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
   BitboardIterator movesIterator, iterator;
   Move move;
-  uint32_t movesOffset = inOffsets[index];
   uint32_t moveNumber = 0;
   // Pawn moves
   {
@@ -4376,11 +4377,16 @@ __global__ void generateWhiteMovesKernel(uint32_t size,
       }
     }
   }
+
+  if (moveNumber != numberOfMoves) {
+    printf("Invalid number of moves generated. Should be %d, got %d ",
+           numberOfMoves, moveNumber);
+  }
 }
 
 __global__ void generateBlackMovesKernel(uint32_t size,
                                          int16_t movesPerBoard,
-                                         const Board& startBoard,
+                                         Board* startBoard,
                                          Move* inMoves,
                                          uint32_t* inOffsets,
                                          uint32_t* inBitboards,
@@ -4388,12 +4394,18 @@ __global__ void generateBlackMovesKernel(uint32_t size,
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= size)
     return;
-
-  Board board = startBoard;
+  Board board = *startBoard;
+  uint32_t movesOffset = inOffsets[index];
+  uint32_t numberOfMoves = inOffsets[index + 1] - movesOffset;
+  uint32_t allMovesSize = inOffsets[size] - inOffsets[0];
   for (int m = 0; m < movesPerBoard; m++) {
-    makeMoveWhite(board, inMoves[m * size + index]);
+    Move move = inMoves[m * size + index];
+    makeMove(board, move);
+    for (int i = 0; i < numberOfMoves; i++) {
+      outMoves[movesOffset + i] = move;
+    }
+    movesOffset += allMovesSize;
   }
-
   Bitboard validMoves, pinned, attackedByEnemy;
   validMoves[TOP] = inBitboards[index];
   validMoves[MID] = inBitboards[size + index];
@@ -4410,7 +4422,6 @@ __global__ void generateBlackMovesKernel(uint32_t size,
   Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
   BitboardIterator movesIterator, iterator;
   Move move;
-  uint32_t movesOffset = inOffsets[index];
   uint32_t moveNumber = 0;
   // Pawn moves
   {
@@ -4873,18 +4884,23 @@ __global__ void generateBlackMovesKernel(uint32_t size,
       }
     }
   }
+
+  if (moveNumber != numberOfMoves) {
+    printf("Invalid number of moves generated. Should be %d, got %d ",
+           numberOfMoves, moveNumber);
+  }
 }
 
 __global__ void evaluateBoardsKernel(uint32_t size,
                                      int16_t movesPerBoard,
-                                     const Board& startBoard,
+                                     Board* startBoard,
                                      Move* inMoves,
                                      int16_t* outValues) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= size)
     return;
 
-  Board board = startBoard;
+  Board board = *startBoard;
   for (int m = 0; m < movesPerBoard; m++) {
     makeMoveWhite(board, inMoves[m * size + index]);
   }
@@ -5065,72 +5081,172 @@ __global__ void evaluateBoardsKernel(uint32_t size,
   outValues[index] = whitePoints - blackPoints;
 }
 
+__global__ void gatherValuesMaxKernel(uint32_t size,
+                                      uint16_t depth,
+                                      uint32_t* inOffsets,
+                                      int16_t* inValues,
+                                      int16_t* outValues,
+                                      uint32_t* bestIndex) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index >= size)
+    return;
+  uint32_t childrenStart = inOffsets[index];
+  uint32_t childrenSize = inOffsets[index + 1] - childrenStart;
+  if (childrenSize > 500)
+    printf("Index %d Children start: %d, childrenSize: %d ", index,
+           childrenStart, childrenSize);
+  int16_t maxValue = INT16_MIN;
+  for (int i = 0; i < childrenSize; i++) {
+    int16_t value = inValues[childrenStart + i];
+    if (value > maxValue) {
+      maxValue = value;
+      if (index == 0) {
+        *bestIndex = i;
+      }
+    }
+  }
+  if (childrenSize == 0) {
+    maxValue = -PieceValue::MATE + depth;
+  }
+  outValues[index] = maxValue;
+}
+
+__global__ void gatherValuesMinKernel(uint32_t size,
+                                      uint16_t depth,
+                                      uint32_t* inOffsets,
+                                      int16_t* inValues,
+                                      int16_t* outValues,
+                                      uint32_t* bestIndex) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (index >= size)
+    return;
+  uint32_t childrenStart = inOffsets[index];
+  uint32_t childrenSize = inOffsets[index + 1] - childrenStart;
+  if (childrenSize > 500)
+    printf("Index %d Children start: %d, childrenSize: %d ", index,
+           childrenStart, childrenSize);
+  int16_t minValue = INT16_MAX;
+  for (int i = 0; i < childrenSize; i++) {
+    int16_t value = inValues[childrenStart + i];
+    if (value < minValue) {
+      minValue = value;
+      if (index == 0) {
+        *bestIndex = i;
+      }
+    }
+  }
+  if (childrenSize == 0) {
+    minValue = PieceValue::MATE - depth;
+  }
+  outValues[index] = minValue;
+}
+
 int GPU::countWhiteMoves(uint32_t size,
                          int16_t movesPerBoard,
-                         const Board& startBoard,
+                         Board* startBoard,
                          Move* inMoves,
                          uint32_t* outOffsets,
                          uint32_t* outBitboards) {
   int numberOfBlocks = calculateNumberOfBlocks(size);
-  countWhiteMovesKernel<<<THREADS_COUNT, numberOfBlocks>>>(
+  countWhiteMovesKernel<<<numberOfBlocks, THREADS_COUNT>>>(
       size, movesPerBoard, startBoard, inMoves, outOffsets, outBitboards);
   gpuErrchk(cudaPeekAtLastError());
   gpuErrchk(cudaDeviceSynchronize());
+
+  return 0;
 }
 
 int GPU::countBlackMoves(uint32_t size,
                          int16_t movesPerBoard,
-                         const Board& startBoard,
+                         Board* startBoard,
                          Move* inMoves,
                          uint32_t* outOffsets,
                          uint32_t* outBitboards) {
   int numberOfBlocks = calculateNumberOfBlocks(size);
-  countBlackMovesKernel<<<THREADS_COUNT, numberOfBlocks>>>(
+  countBlackMovesKernel<<<numberOfBlocks, THREADS_COUNT>>>(
       size, movesPerBoard, startBoard, inMoves, outOffsets, outBitboards);
   gpuErrchk(cudaPeekAtLastError());
   gpuErrchk(cudaDeviceSynchronize());
+
+  return 0;
 }
 
 int GPU::generateWhiteMoves(uint32_t size,
                             int16_t movesPerBoard,
-                            const Board& startBoard,
+                            Board* startBoard,
                             Move* inMoves,
                             uint32_t* inOffsets,
                             uint32_t* inBitboards,
                             Move* outMoves) {
   int numberOfBlocks = calculateNumberOfBlocks(size);
-  generateWhiteMovesKernel<<<THREADS_COUNT, numberOfBlocks>>>(
+  generateWhiteMovesKernel<<<numberOfBlocks, THREADS_COUNT>>>(
       size, movesPerBoard, startBoard, inMoves, inOffsets, inBitboards,
       outMoves);
   gpuErrchk(cudaPeekAtLastError());
   gpuErrchk(cudaDeviceSynchronize());
+
+  return 0;
 }
 
 int GPU::generateBlackMoves(uint32_t size,
                             int16_t movesPerBoard,
-                            const Board& startBoard,
+                            Board* startBoard,
                             Move* inMoves,
                             uint32_t* inOffsets,
                             uint32_t* inBitboards,
                             Move* outMoves) {
   int numberOfBlocks = calculateNumberOfBlocks(size);
-  generateBlackMovesKernel<<<THREADS_COUNT, numberOfBlocks>>>(
+  generateBlackMovesKernel<<<numberOfBlocks, THREADS_COUNT>>>(
       size, movesPerBoard, startBoard, inMoves, inOffsets, inBitboards,
       outMoves);
   gpuErrchk(cudaPeekAtLastError());
   gpuErrchk(cudaDeviceSynchronize());
+
+  return 0;
 }
 
 int GPU::evaluateBoards(uint32_t size,
                         int16_t movesPerBoard,
-                        const Board& startBoard,
+                        Board* startBoard,
                         Move* inMoves,
                         int16_t* outValues) {
   int numberOfBlocks = calculateNumberOfBlocks(size);
-  evaluateBoardsKernel<<<THREADS_COUNT, numberOfBlocks>>>(
+  evaluateBoardsKernel<<<numberOfBlocks, THREADS_COUNT>>>(
       size, movesPerBoard, startBoard, inMoves, outValues);
   gpuErrchk(cudaPeekAtLastError());
   gpuErrchk(cudaDeviceSynchronize());
+
+  return 0;
+}
+
+int GPU::gatherValuesMax(uint32_t size,
+                         uint16_t depth,
+                         uint32_t* inOffsets,
+                         int16_t* inValues,
+                         int16_t* outValues,
+                         uint32_t* bestIndex) {
+  int numberOfBlocks = calculateNumberOfBlocks(size);
+  gatherValuesMaxKernel<<<numberOfBlocks, THREADS_COUNT>>>(
+      size, depth, inOffsets, inValues, outValues, bestIndex);
+  gpuErrchk(cudaPeekAtLastError());
+  gpuErrchk(cudaDeviceSynchronize());
+
+  return 0;
+}
+
+int GPU::gatherValuesMin(uint32_t size,
+                         uint16_t depth,
+                         uint32_t* inOffsets,
+                         int16_t* inValues,
+                         int16_t* outValues,
+                         uint32_t* bestIndex) {
+  int numberOfBlocks = calculateNumberOfBlocks(size);
+  gatherValuesMinKernel<<<numberOfBlocks, THREADS_COUNT>>>(
+      size, depth, inOffsets, inValues, outValues, bestIndex);
+  gpuErrchk(cudaPeekAtLastError());
+  gpuErrchk(cudaDeviceSynchronize());
+
+  return 0;
 }
 }  // namespace engine
 }  // namespace shogi

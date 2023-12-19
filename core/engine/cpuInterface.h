@@ -63,7 +63,8 @@ void countWhiteMoves(uint32_t size,
                      uint32_t* outOffsets,
                      Bitboard* outValidMoves,
                      Bitboard* outAttackedByEnemy,
-                     Bitboard* outPinned, bool* isMate);
+                     Bitboard* outPinned,
+                     bool* isMate);
 
 void countBlackMoves(uint32_t size,
                      int16_t movesPerBoard,
@@ -77,7 +78,7 @@ void countBlackMoves(uint32_t size,
 
 void generateWhiteMoves(uint32_t size,
                         int16_t movesPerBoard,
-    const Board& startBoard,
+                        const Board& startBoard,
                         Move* inMoves,
                         uint32_t* inOffsets,
                         Bitboard* inValidMoves,
@@ -94,6 +95,12 @@ void generateBlackMoves(uint32_t size,
                         Bitboard* inAttackedByEnemy,
                         Bitboard* inPinned,
                         Move* outMoves);
+//
+//int evaluateBoards(uint32_t size,
+//                   int16_t movesPerBoard,
+//                   const Board& startBoard,
+//                   Move* inMoves,
+//                   int16_t* outValues);
 
 void gatherValuesMin(uint32_t size,
                      int16_t movesPerBoard,

@@ -2461,7 +2461,7 @@ void CPU::countWhiteMoves(uint32_t size,
   for (int index = 0; index < size; index++) {
     Board board = startBoard;
     for (int m = 0; m < movesPerBoard; m++) {
-      makeMoveWhite(board, inMoves[index * movesPerBoard + m]);
+      makeMoveWhite(board, inMoves[m * size + index]);
     }
 
     Bitboard king = board[BB::Type::KING] & board[BB::Type::ALL_WHITE];
@@ -2976,7 +2976,7 @@ void CPU::countBlackMoves(uint32_t size,
   for (int index = 0; index < size; index++) {
     Board board = startBoard;
     for (int m = 0; m < movesPerBoard; m++) {
-      makeMoveWhite(board, inMoves[index * movesPerBoard + m]);
+      makeMoveWhite(board, inMoves[m * size + index]);
     }
 
     Bitboard king = board[BB::Type::KING] & board[BB::Type::ALL_BLACK];
@@ -3488,9 +3488,8 @@ void CPU::generateWhiteMoves(uint32_t size,
     Board board = startBoard;
     uint32_t movesOffset = inOffsets[index] + movesPerBoard * index;
     for (int m = 0; m < movesPerBoard; m++) {
-      Move move = inMoves[index * movesPerBoard + m];
+      Move move = inMoves[m * size + index];
       makeMoveWhite(board, move);
-      outMoves[movesOffset + m] = move;
     }
     uint32_t moveNumber = movesPerBoard;
 
@@ -4486,6 +4485,21 @@ void CPU::generateBlackMoves(uint32_t size,
     }
   }
 }
+
+//int CPU::evaluateBoards(uint32_t size,
+//    int16_t movesPerBoard,
+//    const Board& startBoard,
+//    Move* inMoves,
+//    int16_t* outValues) {
+//  for (int index = 0; index < size; index++) {
+//    Board board = startBoard;
+//    for (int m = 0; m < movesPerBoard; m++) {
+//      Move move = inMoves[index * movesPerBoard + m];
+//      makeMoveWhite(board, move);
+//      outMoves[movesOffset + m] = move;
+//    }
+//  }
+//}
 
 void CPU::gatherValuesMin(uint32_t size,
                           int16_t movesPerBoard,

@@ -95,15 +95,16 @@ __host__ __device__ inline Bitboard getFullFile(int fileIdx) {
 }
 
 __host__ __device__ inline uint32_t getRankBlockPattern(const Bitboard& bb,
-                                                 Square square) {
+                                                        Square square) {
   const uint32_t& region = bb[squareToRegion(square)];
   uint32_t rowsBeforeInRegion = (square / BOARD_DIM) % 3;
   uint32_t result = region << 5 << (rowsBeforeInRegion * BOARD_DIM) << 1 >> 25;
   return result;
 }
 
-__host__ __device__ inline uint32_t getFileBlockPattern(const Bitboard& occupied,
-                                                 Square square) {
+__host__ __device__ inline uint32_t getFileBlockPattern(
+    const Bitboard& occupied,
+    Square square) {
   int offset = squareToFile(square);
   uint32_t result = 0;
   result |= isBitSet(occupied[TOP], 17 - offset) << 6;
@@ -114,6 +115,51 @@ __host__ __device__ inline uint32_t getFileBlockPattern(const Bitboard& occupied
   result |= isBitSet(occupied[BOTTOM], 26 - offset) << 1;
   result |= isBitSet(occupied[BOTTOM], 17 - offset);
   return result;
+}
+
+__host__ __device__ inline void makeMove(Board& board, Move move) {
+  uint64_t one = 1;
+  Region toRegionIdx = squareToRegion(static_cast<Square>(move.to));
+  uint32_t toRegion = 1 << (REGION_SIZE - 1 - move.to % REGION_SIZE);
+  uint32_t inHandOffsetForColor = 0;
+  bool captured = false;
+  if (move.from < SQUARE_SIZE) {
+    Region fromRegionIdx = squareToRegion(static_cast<Square>(move.from));
+    uint32_t fromRegion = 1 << (REGION_SIZE - 1 - move.from % REGION_SIZE);
+    // Check if white was captured
+    if (board[BB::Type::ALL_WHITE][toRegionIdx] & toRegion) {
+      inHandOffsetForColor = 7;
+      captured = true;
+    } else if (board[BB::Type::ALL_BLACK][toRegionIdx] & toRegion) {
+      captured = true;
+    }
+    if (captured) {
+      for (int i = 0; i < BB::Type::SIZE; i++) {
+        if (board[static_cast<BB::Type>(i)][toRegionIdx] & toRegion) {
+          board[static_cast<BB::Type>(i)][toRegionIdx] &= ~toRegion;
+          if (i < BB::Type::KING) {
+            uint64_t addedValue = one << (4 * (inHandOffsetForColor + i));
+            board.inHand.value += addedValue;
+          }
+        }
+      }
+    }
+    for (int i = 0; i < BB::Type::SIZE; i++) {
+      if (board[static_cast<BB::Type>(i)][fromRegionIdx] & fromRegion) {
+        board[static_cast<BB::Type>(i)][fromRegionIdx] &= ~fromRegion;
+        board[static_cast<BB::Type>(i)][toRegionIdx] |= toRegion;
+      }
+    }
+    if (move.promotion) {
+      board[BB::Type::PROMOTED][toRegionIdx] |= toRegion;
+    }
+  } else {
+    int offset = move.from - WHITE_PAWN_DROP;
+    uint64_t addedValue = one << (4 * offset);
+    board.inHand.value -= addedValue;
+    board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
+    board[static_cast<BB::Type>(BB::Type::ALL_WHITE)][toRegionIdx] |= toRegion;
+  }
 }
 
 __host__ __device__ inline void makeMoveWhite(Board& board, Move move) {

@@ -60,39 +60,53 @@ int evaluateBoards(thrust::device_ptr<Board> inBoards,
 
 int countWhiteMoves(uint32_t size,
                     int16_t movesPerBoard,
-                    const Board& startBoard,
+                    Board* startBoard,
                     Move* inMoves,
                     uint32_t* outOffsets,
                     uint32_t* outBitboards);
 
 int countBlackMoves(uint32_t size,
                     int16_t movesPerBoard,
-                    const Board& startBoard,
+                    Board* startBoard,
                     Move* inMoves,
                     uint32_t* outOffsets,
                     uint32_t* outBitboards);
 
 int generateWhiteMoves(uint32_t size,
-                        int16_t movesPerBoard,
-                        const Board& startBoard,
-                        Move* inMoves,
-                        uint32_t* inOffsets,
-                        uint32_t* inBitboards,
-                        Move* outMoves);
+                       int16_t movesPerBoard,
+                       Board* startBoard,
+                       Move* inMoves,
+                       uint32_t* inOffsets,
+                       uint32_t* inBitboards,
+                       Move* outMoves);
 
 int generateBlackMoves(uint32_t size,
-                        int16_t movesPerBoard,
-                        const Board& startBoard,
-                        Move* inMoves,
-                        uint32_t* inOffsets,
-                        uint32_t* inBitboards,
-                        Move* outMoves);
+                       int16_t movesPerBoard,
+                       Board* startBoard,
+                       Move* inMoves,
+                       uint32_t* inOffsets,
+                       uint32_t* inBitboards,
+                       Move* outMoves);
 
 int evaluateBoards(uint32_t size,
                    int16_t movesPerBoard,
-                   const Board& startBoard,
+                   Board* startBoard,
                    Move* inMoves,
                    int16_t* outValues);
+
+int gatherValuesMax(uint32_t size,
+                    uint16_t depth,
+                    uint32_t* inOffsets,
+                    int16_t* inValues,
+                    int16_t* outValues,
+                    uint32_t* bestIndex);
+
+int gatherValuesMin(uint32_t size,
+                    uint16_t depth,
+                    uint32_t* inOffsets,
+                    int16_t* inValues,
+                    int16_t* outValues,
+                    uint32_t* bestIndex);
 }  // namespace GPU
 }  // namespace engine
 }  // namespace shogi

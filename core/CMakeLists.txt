@@ -11,6 +11,8 @@ set(headerFiles
     engine/Square.h
     engine/cpuInterface.h
     engine/gpuInterface.h
+    engine/MoveGenerationCPU.h
+    engine/MoveGenerationGPU.h
 )
 
 set(sourceFiles
@@ -24,6 +26,8 @@ set(sourceFiles
     engine/kernels.cu
     engine/cpuInterface.cu
     engine/gpuInterface.cu
+    engine/MoveGenerationCPU.cu
+    engine/MoveGenerationGPU.cu
 )
 
 set(dllFiles
