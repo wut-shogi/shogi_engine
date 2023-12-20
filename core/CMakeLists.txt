@@ -1,28 +1,32 @@
 set(headerFiles
     engine/bitboard.h
     engine/board.h
-    engine/cpuInterface.h
+    engine/CPUsearchHelpers.h
     include/engine.h
+    engine/evaluation.h
     engine/game.h
     engine/gameTree.h
-    engine/gpuInterface.h
+    engine/GPUsearchHelpers.h
     engine/lookUpTables.h
     engine/moveGen.h
     engine/moveGenHelpers.h
     engine/rules.h
+    engine/search.h
     engine/square.h
 )
 
 set(sourceFiles
     engine/bitboard.cu
     engine/board.cu
-    engine/cpuInterface.cu
+    engine/CPUsearchHelpers.cu
     engine/engine.cu
+    engine/evaluation.cu
     engine/game.cu
     engine/moveGen.cu
     engine/moveGenHelpers.cu
-    engine/gpuInterface.cu
+    engine/GPUsearchHelpers.cu
     engine/lookUpTables.cu
+    engine/search.cu
 )
 
 set(dllFiles

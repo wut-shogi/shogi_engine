@@ -1,10 +1,10 @@
+#include "GPUsearchHelpers.h"
 #include <device_launch_parameters.h>
 #include <stdio.h>
 #include <thrust/execution_policy.h>
 #include <thrust/scan.h>
-#include "MoveGen.h"
-#include "MoveGenHelpers.h"
-#include "gpuInterface.h"
+#include "moveGen.h"
+#include "moveGenHelpers.h"
 
 namespace shogi {
 namespace engine {

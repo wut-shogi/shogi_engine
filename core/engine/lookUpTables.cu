@@ -446,10 +446,10 @@ __host__ __device__ const Bitboard& getFileAttacks(const Square& square,
                                                    const Bitboard& occupied) {
 #ifdef __CUDA_ARCH__
   return GPU::lookUpTables[0]
-      .fileAttacks[square * 128 + getRankBlockPattern(occupied, square)];
+      .fileAttacks[square * 128 + getFileBlockPattern(occupied, square)];
 #else
   return CPU::lookUpTables
-      .fileAttacks[square * 128 + getRankBlockPattern(occupied, square)];
+      .fileAttacks[square * 128 + getFileBlockPattern(occupied, square)];
 #endif
 }
 __host__ __device__ const Bitboard& getDiagRightAttacks(
@@ -457,10 +457,11 @@ __host__ __device__ const Bitboard& getDiagRightAttacks(
     const Bitboard& occupied) {
 #ifdef __CUDA_ARCH__
   return GPU::lookUpTables[0]
-      .diagRightAttacks[square * 128 + getRankBlockPattern(occupied, square)];
+      .diagRightAttacks[square * 128 +
+                        getDiagRightBlockPattern(occupied, square)];
 #else
   return CPU::lookUpTables
-      .diagRightAttacks[square * 128 + getRankBlockPattern(occupied, square)];
+      .diagRightAttacks[square * 128 + getDiagRightBlockPattern(occupied, square)];
 #endif
 }
 __host__ __device__ const Bitboard& getDiagLeftAttacks(
@@ -468,10 +469,11 @@ __host__ __device__ const Bitboard& getDiagLeftAttacks(
     const Bitboard& occupied) {
 #ifdef __CUDA_ARCH__
   return GPU::lookUpTables[0]
-      .diagLeftAttacks[square * 128 + getRankBlockPattern(occupied, square)];
+      .diagLeftAttacks[square * 128 +
+                       getDiagLeftBlockPattern(occupied, square)];
 #else
   return CPU::lookUpTables
-      .diagLeftAttacks[square * 128 + getRankBlockPattern(occupied, square)];
+      .diagLeftAttacks[square * 128 + getDiagLeftBlockPattern(occupied, square)];
 #endif
 }
 __host__ __device__ const Bitboard& getRankMask(const uint32_t& rank) {

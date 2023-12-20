@@ -1,11 +1,5 @@
-#include <thrust/device_malloc.h>
-#include <thrust/device_vector.h>
-#include <thrust/extrema.h>
-#include <thrust/host_vector.h>
-#include <stack>
-#include "GameTree.h"
-#include "cpuInterface.h"
-#include "gpuInterface.h"
+#include "gameTree.h"
+#include "GPUsearchHelpers.h"
 
 namespace shogi {
 namespace engine {

@@ -3,7 +3,7 @@
 #include "MoveGenHelpers.h"
 namespace shogi {
 namespace engine {
-__host__ __device__ void getWhitePiecesInfo(Board& board,
+__host__ __device__ void getWhitePiecesInfo(const Board& board,
                                             Bitboard& outPinned,
                                             Bitboard& outValidMoves,
                                             Bitboard& outAttackedByEnemy) {
@@ -58,7 +58,6 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
   attackedByEnemy |=
       moveNW(pieces) | moveNE(pieces) | moveSE(pieces) | moveSW(pieces);
 
-  // Sliding pieces
   iterator.Init(king);
   iterator.Next();
   Square kingSquare = iterator.GetCurrentSquare();
@@ -73,18 +72,20 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
     iterator.Init(pieces);
     while (iterator.Next()) {
       square = iterator.GetCurrentSquare();
-      attacksFull = LookUpTables::getFileAttacks(square, occupied);
-      attackedByEnemy |= attacksFull;
       mask = LookUpTables::getRankMask(squareToRank(square));
-      if (!(attacksFull & king & mask)) {
+      attacksFull = LookUpTables::getFileAttacks(square, occupied) & mask;
+      attackedByEnemy |= attacksFull;
+      if (!(attacksFull & king)) {
         potentialPin = attacksFull & board[BB::ALL_WHITE];
         attacks =
             LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
-        if (attacks & king & mask) {
+        if (attacks & king) {
           pinned |= potentialPin;
         }
       } else {
-        enemySlidingChecksPaths |= attacksFull & mask;
+        enemySlidingChecksPaths |= attacksFull;
+        attackedByEnemy |=
+            LookUpTables::getFileAttacks(square, occupied & ~king) & mask;
       }
     }
   }
@@ -115,6 +116,8 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & mask;
+        attackedByEnemy |=
+            LookUpTables::getRankAttacks(square, occupied & ~king) & mask;
       }
       // right
       if (!(attacksFull & king & ~mask)) {
@@ -126,6 +129,8 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & ~mask;
+        attackedByEnemy |=
+            LookUpTables::getRankAttacks(square, occupied & ~king) & ~mask;
       }
       // up-down
       attacksFull = LookUpTables::getFileAttacks(square, occupied);
@@ -141,6 +146,8 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & mask;
+        attackedByEnemy |=
+            LookUpTables::getFileAttacks(square, occupied & ~king) & mask;
       }
       // down
       if (!(attacksFull & king & ~mask)) {
@@ -152,6 +159,8 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & ~mask;
+        attackedByEnemy |=
+            LookUpTables::getFileAttacks(square, occupied & ~king) & ~mask;
       }
     }
   }
@@ -182,6 +191,8 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & mask;
+        attackedByEnemy |=
+            LookUpTables::getDiagRightAttacks(square, occupied & ~king) & mask;
       }
       // NE
       if (!(attacksFull & king & ~mask)) {
@@ -193,6 +204,8 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & ~mask;
+        attackedByEnemy |=
+            LookUpTables::getDiagRightAttacks(square, occupied & ~king) & ~mask;
       }
       // left diag
       attacksFull = LookUpTables::getDiagLeftAttacks(square, occupied);
@@ -209,6 +222,8 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & mask;
+        attackedByEnemy |=
+            LookUpTables::getDiagLeftAttacks(square, occupied & ~king) & mask;
       }
       // SE
       if (!(attacksFull & king & ~mask)) {
@@ -220,6 +235,8 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & ~mask;
+        attackedByEnemy |=
+            LookUpTables::getDiagLeftAttacks(square, occupied & ~king) & ~mask;
       }
     }
   }
@@ -240,10 +257,10 @@ __host__ __device__ void getWhitePiecesInfo(Board& board,
     outValidMoves = {0, 0, 0};
   }
   outPinned = pinned;
-  outAttackedByEnemy = attackedByEnemy;
+  outAttackedByEnemy = attackedByEnemy & ~board[BB::Type::ALL_BLACK];
 }
 
-__host__ __device__ void getBlackPiecesInfo(Board& board,
+__host__ __device__ void getBlackPiecesInfo(const Board& board,
                                             Bitboard& outPinned,
                                             Bitboard& outValidMoves,
                                             Bitboard& outAttackedByEnemy) {
@@ -312,10 +329,10 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
     iterator.Init(pieces);
     while (iterator.Next()) {
       square = iterator.GetCurrentSquare();
-      attacksFull = LookUpTables::getFileAttacks(square, occupied);
-      attackedByEnemy |= attacksFull;
       mask = ~LookUpTables::getRankMask(squareToRank(square));
-      if (!(attacksFull & king & mask)) {
+      attacksFull = LookUpTables::getFileAttacks(square, occupied) & mask;
+      attackedByEnemy |= attacksFull;
+      if (!(attacksFull & king)) {
         potentialPin = attacksFull & board[BB::ALL_BLACK];
         attacks =
             LookUpTables::getFileAttacks(square, occupied & ~potentialPin);
@@ -323,7 +340,9 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
           pinned |= potentialPin;
         }
       } else {
-        enemySlidingChecksPaths |= attacksFull & mask;
+        enemySlidingChecksPaths |= attacksFull;
+        attackedByEnemy |=
+            LookUpTables::getFileAttacks(square, occupied & ~king) & mask;
       }
     }
   }
@@ -354,6 +373,8 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & mask;
+        attackedByEnemy |=
+            LookUpTables::getRankAttacks(square, occupied & ~king) & mask;
       }
       // right
       if (!(attacksFull & king & ~mask)) {
@@ -365,6 +386,8 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & ~mask;
+        attackedByEnemy |=
+            LookUpTables::getRankAttacks(square, occupied & ~king) & ~mask;
       }
       // up-down
       attacksFull = LookUpTables::getFileAttacks(square, occupied);
@@ -380,6 +403,8 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & mask;
+        attackedByEnemy |=
+            LookUpTables::getFileAttacks(square, occupied & ~king) & mask;
       }
       // down
       if (!(attacksFull & king & ~mask)) {
@@ -391,6 +416,8 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & ~mask;
+        attackedByEnemy |=
+            LookUpTables::getFileAttacks(square, occupied & ~king) & ~mask;
       }
     }
   }
@@ -422,6 +449,8 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & mask;
+        attackedByEnemy |=
+            LookUpTables::getDiagRightAttacks(square, occupied & ~king) & mask;
       }
       // NE
       if (!(attacksFull & king & ~mask)) {
@@ -433,6 +462,8 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & ~mask;
+        attackedByEnemy |=
+            LookUpTables::getDiagRightAttacks(square, occupied & ~king) & ~mask;
       }
       // left diag
       attacksFull = LookUpTables::getDiagLeftAttacks(square, occupied);
@@ -449,6 +480,8 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & mask;
+        attackedByEnemy |=
+            LookUpTables::getDiagLeftAttacks(square, occupied & ~king) & mask;
       }
       // SE
       if (!(attacksFull & king & ~mask)) {
@@ -460,6 +493,8 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
         }
       } else {
         enemySlidingChecksPaths |= attacksFull & ~mask;
+        attackedByEnemy |=
+            LookUpTables::getDiagLeftAttacks(square, occupied & ~king) & ~mask;
       }
     }
   }
@@ -475,15 +510,15 @@ __host__ __device__ void getBlackPiecesInfo(Board& board,
   } else if (numberOfCheckingPieces == 0) {
     // If there is no checks all moves are valid (you cannot capture your own
     // piece)
-    outValidMoves = ~board[BB::Type::ALL_WHITE];
+    outValidMoves = ~board[BB::Type::ALL_BLACK];
   } else {
     outValidMoves = {0, 0, 0};
   }
   outPinned = pinned;
-  outAttackedByEnemy = attackedByEnemy;
+  outAttackedByEnemy = attackedByEnemy & ~board[BB::Type::ALL_WHITE];
 }
 
-__host__ __device__ uint32_t countWhiteMoves(Board& board,
+__host__ __device__ uint32_t countWhiteMoves(const Board& board,
                                              Bitboard& pinned,
                                              Bitboard& validMoves,
                                              Bitboard& attackedByEnemy) {
@@ -757,7 +792,7 @@ __host__ __device__ uint32_t countWhiteMoves(Board& board,
   return numberOfMoves;
 }
 
-__host__ __device__ uint32_t countBlackMoves(Board& board,
+__host__ __device__ uint32_t countBlackMoves(const Board& board,
                                              Bitboard& pinned,
                                              Bitboard& validMoves,
                                              Bitboard& attackedByEnemy) {
@@ -1029,7 +1064,7 @@ __host__ __device__ uint32_t countBlackMoves(Board& board,
   return numberOfMoves;
 }
 
-__host__ __device__ uint32_t generateWhiteMoves(Board& board,
+__host__ __device__ uint32_t generateWhiteMoves(const Board& board,
                                                 Bitboard& pinned,
                                                 Bitboard& validMoves,
                                                 Bitboard& attackedByEnemy,
@@ -1041,6 +1076,7 @@ __host__ __device__ uint32_t generateWhiteMoves(Board& board,
   uint32_t moveNumber = 0;
 
   // King moves
+  move.promotion = 0;
   {
     pieces = board[BB::Type::KING] & board[BB::Type::ALL_WHITE];
     iterator.Init(pieces);
@@ -1525,7 +1561,7 @@ __host__ __device__ uint32_t generateWhiteMoves(Board& board,
   return moveNumber;
 }
 
-__host__ __device__ uint32_t generateBlackMoves(Board& board,
+__host__ __device__ uint32_t generateBlackMoves(const Board& board,
                                                 Bitboard& pinned,
                                                 Bitboard& validMoves,
                                                 Bitboard& attackedByEnemy,
@@ -1537,6 +1573,7 @@ __host__ __device__ uint32_t generateBlackMoves(Board& board,
   uint32_t moveNumber = 0;
 
   // King moves
+  move.promotion = 0;
   {
     pieces = board[BB::Type::KING] & board[BB::Type::ALL_BLACK];
     iterator.Init(pieces);

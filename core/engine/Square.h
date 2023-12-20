@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "Rules.h"
+#include <cuda_runtime.h>
 
 namespace shogi {
 namespace engine {

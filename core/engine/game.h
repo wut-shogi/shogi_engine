@@ -1,10 +1,9 @@
 #pragma once
 #include <vector>
 #include <chrono>
-#include "GameTree.h"
-#include "MoveGenHelpers.h"
-#include "gpuInterface.h"
-#include "LookUpTables.h"
+#include "moveGenHelpers.h"
+#include "lookUpTables.h"
+#include "gameTree.h"
 
 namespace shogi {
 namespace engine {

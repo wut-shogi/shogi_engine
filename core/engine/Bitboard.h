@@ -4,6 +4,7 @@
 #include <bitset>
 #include <cstring>
 #include <iostream>
+#include <string>
 #include "Rules.h"
 #include "Square.h"
 namespace shogi {
@@ -14,6 +15,33 @@ struct Move {
   uint16_t to : 7;
   uint16_t promotion : 1;
 };
+
+inline std::string moveToUSI(Move move) {
+  static const std::string pieceSymbols[14] = {
+      "p", "l", "n", "s", "g", "b", "r", "P", "L", "N", "S", "G", "B", "R"};
+  std::string moveString = "";
+  if (move.from >= shogi::engine::WHITE_PAWN_DROP) {
+    moveString +=
+        pieceSymbols[move.from - shogi::engine::WHITE_PAWN_DROP] + "*";
+  } else {
+    int fromFile = shogi::engine::squareToFile(
+        static_cast<shogi::engine::Square>(move.from));
+    int fromRank = shogi::engine::squareToRank(
+        static_cast<shogi::engine::Square>(move.from));
+    moveString += std::to_string(BOARD_DIM - fromFile) +
+                  static_cast<char>('a' + fromRank);
+  }
+  int toFile =
+      shogi::engine::squareToFile(static_cast<shogi::engine::Square>(move.to));
+  int toRank =
+      shogi::engine::squareToRank(static_cast<shogi::engine::Square>(move.to));
+  moveString +=
+      std::to_string(BOARD_DIM - toFile) + static_cast<char>('a' + toRank);
+  if (move.promotion) {
+    moveString += '+';
+  }
+  return moveString;
+}
 
 namespace BB {
 enum Type {
@@ -177,7 +205,6 @@ __host__ __device__ inline void setSquare(Bitboard& bb, const Square square) {
   Region regionIdx = squareToRegion(square);
   bb[regionIdx] |= 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
 }
-
 
 __host__ __device__ inline uint32_t popcount(uint32_t value) {
 #ifdef __CUDA_ARCH__
