@@ -29,7 +29,6 @@ inline void gpuAssert(cudaError_t code,
 
 int calculateNumberOfBlocks(uint32_t size) {
   int numberOfBlocks = (int)ceil(size / (double)THREADS_COUNT);
-  std::cout << "Number of blocks: " << numberOfBlocks << std::endl;
   return numberOfBlocks;
 }
 
@@ -158,12 +157,10 @@ __global__ void generateWhiteMovesKernel(uint32_t size,
   uint32_t numberOfGeneratedMoves = generateWhiteMoves(board, pinned, validMoves, attackedByEnemy,
                      outMoves + movesOffset);
 
-  #ifdef NDEBUG
-  if (numberOfGeneratedMoves > numberOfMoves) {
+  if (numberOfGeneratedMoves != numberOfMoves) {
     printf(
-        "generateWhiteMovesKernel Error: generated more moves then precounted");
+        "generateWhiteMovesKernel Error: generated different number of moves then precounted");
   }
-  #endif
 }
 
 __global__ void generateBlackMovesKernel(uint32_t size,
@@ -203,12 +200,11 @@ __global__ void generateBlackMovesKernel(uint32_t size,
   uint32_t numberOfGeneratedMoves = generateBlackMoves(
       board, pinned, validMoves, attackedByEnemy, outMoves + movesOffset);
 
-#ifdef NDEBUG
-  if (numberOfGeneratedMoves > numberOfMoves) {
+
+  if (numberOfGeneratedMoves != numberOfMoves) {
     printf(
-        "generateBlackMovesKernel Error: generated more moves then precounted");
+        "generateBlackMovesKernel Error: generated different number of moves then precounted");
   }
-#endif
 }
 
 __global__ void evaluateBoardsKernel(uint32_t size,

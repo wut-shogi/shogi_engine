@@ -11,10 +11,10 @@ namespace engine {
 class GameSimulator {
  public:
   void Run() {
-    LookUpTables::CPU::init();
-    LookUpTables::GPU::init();
-    d_BufferSize = 1900000000;
-    cudaError_t error = cudaMalloc((void**)&d_Buffer, d_BufferSize);
+    bool result = search::init();
+    if (!result) {
+      std::cout << "init Error" << std::endl;
+    }
     board = Boards::STARTING_BOARD();
     isWhite = false;
     print_Board(board);
@@ -25,7 +25,7 @@ class GameSimulator {
       } else if (command == "n") {
         auto start = std::chrono::high_resolution_clock::now();
         Move bestMove =
-            GetBestMove(d_Buffer, d_BufferSize, board, isWhite, 0, 5);
+            search::GetBestMove(board, isWhite, 0, 5);
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration =
             std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);

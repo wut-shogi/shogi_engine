@@ -21,9 +21,6 @@ class MoveList {
                                      data())
                 : generateBlackMoves(board, pinned, validMoves, attackedByEnemy,
                                      data());
-    if (generatedCount > count) {
-      std::cout << "Error" << std::endl;
-    }
   }
   Move* data() { return moves.data(); }
   uint32_t size() { return moves.size(); }
@@ -35,7 +32,9 @@ class MoveList {
 };
 
 template <bool Root>
-__host__ uint64_t perft(Board& board, uint16_t depth, bool isWhite = false) {
+__host__ uint64_t perft(Board& board,
+                        uint16_t depth,
+                        std::vector<Move>& movesFromRoot, bool isWhite = false) {
   uint64_t count = 0;
   MoveList moves = MoveList(board, isWhite);
   std::vector<uint64_t> counts;
@@ -43,26 +42,17 @@ __host__ uint64_t perft(Board& board, uint16_t depth, bool isWhite = false) {
     return moves.size();
   }
   for (const auto& move : moves) {
+    movesFromRoot.push_back(move);
     Board oldBoard = board;
     MoveInfo moveReturnInfo = makeMove<true>(board, move);
     if constexpr (Root) {
-      counts.push_back(perft<false>(board, depth - 1, !isWhite));
+      counts.push_back(perft<false>(board, depth - 1, movesFromRoot, !isWhite));
     } else {
-      count += perft<false>(board, depth - 1, !isWhite);
+      count += perft<false>(board, depth - 1, movesFromRoot, !isWhite);
     }
-    if (move.promotion == 1) {
-      std::cout << "Err" << std::endl;
-    }
-    unmakeMove(board, move, moveReturnInfo);
-    for (int i = 0; i < BB::Type::SIZE; i++) {
-      if (board[static_cast<BB::Type>(i)] !=
-          oldBoard[static_cast<BB::Type>(i)]) {
-        std::cout << "Error" << std::endl;
-      }
-    }
-    if (board.inHand.value != oldBoard.inHand.value) {
-      std::cout << "Error" << std::endl;
-    }
+    //unmakeMove(board, move, moveReturnInfo);
+    board = oldBoard;
+    movesFromRoot.pop_back();
   }
   if constexpr (Root) {
     uint64_t nodesSearched = 0;

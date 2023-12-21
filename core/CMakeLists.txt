@@ -22,6 +22,7 @@ set(sourceFiles
     engine/engine.cu
     engine/evaluation.cu
     engine/game.cu
+    engine/gameTree.cu
     engine/moveGen.cu
     engine/moveGenHelpers.cu
     engine/GPUsearchHelpers.cu

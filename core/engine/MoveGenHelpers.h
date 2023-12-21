@@ -179,9 +179,8 @@ __host__ __device__ inline MoveInfo makeMove(Board& board, Move move) {
     uint64_t addedValue = one << (4 * offset);
     board.inHand.value -= addedValue;
     board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
-    board[static_cast<BB::Type>(offset / 7)][toRegionIdx] |= toRegion;
+    board[static_cast<BB::Type>(offset / 7 + BB::Type::ALL_WHITE)][toRegionIdx] |= toRegion;
   }
-
   return info;
 }
 
@@ -200,7 +199,7 @@ __host__ inline void unmakeMove(Board& board,
     uint64_t addedValue = one << (4 * offset);
     board.inHand.value += addedValue;
     board[static_cast<BB::Type>(offset % 7)][toRegionIdx] &= ~toRegion;
-    board[static_cast<BB::Type>(offset / 7)][toRegionIdx] &= ~toRegion;
+    board[static_cast<BB::Type>(offset / 7 + BB::Type::ALL_WHITE)][toRegionIdx] &= ~toRegion;
   } else {
     Region fromRegionIdx = squareToRegion(static_cast<Square>(move.from));
     uint32_t fromRegion = 1 << (REGION_SIZE - 1 - move.from % REGION_SIZE);
@@ -217,9 +216,8 @@ __host__ inline void unmakeMove(Board& board,
     }
 
     if (moveReturnInfo.captured) {
-      uint64_t addedValue =
-          one << (4 *
-                  ((moveReturnInfo.fromColor ? 7 : 0) + moveReturnInfo.toType));
+      uint64_t addedValue = one << (4 * ((moveReturnInfo.fromColor ? 7 : 0) +
+                                         moveReturnInfo.toType));
       board.inHand.value -= addedValue;
       board[static_cast<BB::Type>(moveReturnInfo.toType)][toRegionIdx] |=
           toRegion;

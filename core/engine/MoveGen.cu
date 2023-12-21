@@ -257,7 +257,7 @@ __host__ __device__ void getWhitePiecesInfo(const Board& board,
     outValidMoves = {0, 0, 0};
   }
   outPinned = pinned;
-  outAttackedByEnemy = attackedByEnemy & ~board[BB::Type::ALL_BLACK];
+  outAttackedByEnemy = attackedByEnemy;
 }
 
 __host__ __device__ void getBlackPiecesInfo(const Board& board,
@@ -515,7 +515,7 @@ __host__ __device__ void getBlackPiecesInfo(const Board& board,
     outValidMoves = {0, 0, 0};
   }
   outPinned = pinned;
-  outAttackedByEnemy = attackedByEnemy & ~board[BB::Type::ALL_WHITE];
+  outAttackedByEnemy = attackedByEnemy;
 }
 
 __host__ __device__ uint32_t countWhiteMoves(const Board& board,
@@ -834,8 +834,8 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
                      popcount(moves[MID]) + popcount(moves[BOTTOM]);
     moves = moveN(moveNW(pieces)) & validMoves;
     ourAttacks |= moves;
-    numberOfMoves += popcount(moves[TOP] & ~TOP_RANK) +     // forced promotions
-                     popcount(moves[TOP] & TOP_RANK) * 2 +  // promotions
+    numberOfMoves += popcount(moves[TOP] & ~BOTTOM_RANK) +  // forced promotions
+                     popcount(moves[TOP] & BOTTOM_RANK) * 2 +  // promotions
                      popcount(moves[MID]) + popcount(moves[BOTTOM]);
   }
 

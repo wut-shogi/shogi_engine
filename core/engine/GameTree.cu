@@ -1,14 +1,34 @@
-#include "gameTree.h"
 #include "GPUsearchHelpers.h"
+#include "gameTree.h"
+#include "lookUpTables.h"
 
 namespace shogi {
 namespace engine {
+namespace search {
 
+uint8_t* d_Buffer;
+uint32_t d_BufferSize;
+
+bool init() {
+  try {
+    LookUpTables::CPU::init();
+    LookUpTables::GPU::init();
+    size_t total = 0, free = 0;
+    cudaMemGetInfo(&free, &total);
+    if (free == 0)
+      return false;
+    d_BufferSize = (free / 4) * 4;
+    cudaError_t error = cudaMalloc((void**)&d_Buffer, d_BufferSize);
+    if (error != cudaSuccess)
+      return false;
+  } catch (...) {
+    return false;
+  }
+  return true;
+}
 
 // True if reached max depth false if not
-Move GetBestMove(uint8_t* d_Buffer,
-                 uint32_t d_BufferSize,
-                 const Board& board,
+Move GetBestMove(const Board& board,
                  bool isWhite,
                  uint16_t depth,
                  uint16_t maxDepth) {
@@ -87,9 +107,9 @@ Move GetBestMove(uint8_t* d_Buffer,
   movesPtr = (Move*)(bufferEnd - layerSize[1] * sizeof(Move));
   cudaMemcpy(&bestMove, movesPtr + h_bestIndex, sizeof(Move),
              cudaMemcpyDeviceToHost);
-  std::cout << "Done" << std::endl;
   return bestMove;
 }
 
+}  // namespace search
 }  // namespace engine
 }  // namespace shogi
