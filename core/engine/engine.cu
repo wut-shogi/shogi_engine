@@ -23,8 +23,8 @@ void test() {
   
   std::vector<Move> movesFromRoot;
   search::init();
-  // CPU::perft<true>(board, 5, movesFromRoot, isWhite);
-  search::GetBestMove(board, isWhite, 0, 5);
+  CPU::perft<true, true>(startingBoard, 3, movesFromRoot, false);
+  //search::GetBestMove(board, isWhite, 0, 5);
   search::cleanup();
   std::cout << "Done!" << std::endl;
 }

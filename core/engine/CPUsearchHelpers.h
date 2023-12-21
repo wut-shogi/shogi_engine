@@ -31,10 +31,11 @@ class MoveList {
   std::vector<Move> moves;
 };
 
-template <bool Root>
+template <bool Root, bool Verbose = false>
 __host__ uint64_t perft(Board& board,
                         uint16_t depth,
-                        std::vector<Move>& movesFromRoot, bool isWhite = false) {
+                        std::vector<Move>& movesFromRoot,
+                        bool isWhite = false) {
   uint64_t count = 0;
   MoveList moves = MoveList(board, isWhite);
   std::vector<uint64_t> counts;
@@ -46,22 +47,26 @@ __host__ uint64_t perft(Board& board,
     Board oldBoard = board;
     MoveInfo moveReturnInfo = makeMove<true>(board, move);
     if constexpr (Root) {
-      counts.push_back(perft<false>(board, depth - 1, movesFromRoot, !isWhite));
+      counts.push_back(
+          perft<false, Verbose>(board, depth - 1, movesFromRoot, !isWhite));
     } else {
-      count += perft<false>(board, depth - 1, movesFromRoot, !isWhite);
+      count += perft<false, Verbose>(board, depth - 1, movesFromRoot, !isWhite);
     }
-    //unmakeMove(board, move, moveReturnInfo);
+    // unmakeMove(board, move, moveReturnInfo);
     board = oldBoard;
     movesFromRoot.pop_back();
   }
   if constexpr (Root) {
     uint64_t nodesSearched = 0;
     for (int i = 0; i < moves.size(); i++) {
-      std::cout << moveToUSI(*(moves.data() + i)) << ": " << counts[i]
-                << std::endl;
+      if constexpr (Verbose)
+        std::cout << moveToUSI(*(moves.data() + i)) << ": " << counts[i]
+                  << std::endl;
       nodesSearched += counts[i];
     }
-    std::cout << "Nodes searched: " << nodesSearched << std::endl;
+    if constexpr (Verbose)
+      std::cout << "Nodes searched: " << nodesSearched << std::endl;
+    return nodesSearched;
   }
   return count;
 }
