@@ -5,9 +5,11 @@ namespace engine {
 namespace LookUpTables {
 namespace CPU {
 void init();
+void cleanup();
 }  // namespace CPU
 namespace GPU {
 int init();
+void cleanup();
 }  // namespace GPU
 
 __host__ __device__ uint32_t getRankBlockPattern(const Bitboard& bb,

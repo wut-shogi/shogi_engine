@@ -5,6 +5,8 @@
 
 extern "C" SHOGILIBRARY_API bool init();
 
+extern "C" SHOGILIBRARY_API void cleanup();
+
 extern "C" SHOGILIBRARY_API BSTR
 getAllLegalMoves(const char* SFENstring);
 

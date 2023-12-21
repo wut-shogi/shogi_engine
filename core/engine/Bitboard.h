@@ -1,6 +1,5 @@
 #pragma once
 #include <array>
-#include <bit>
 #include <bitset>
 #include <cstring>
 #include <iostream>
@@ -288,10 +287,6 @@ struct BitboardIterator {
   }
 
   __host__ __device__ Square GetCurrentSquare() {
-    if (squareOffset - bitPos < 0 ||
-        squareOffset - bitPos >= Square::SQUARE_SIZE) {
-      printf("Error in GetCurrentSquare\n");
-    }
     return static_cast<Square>(squareOffset - bitPos);
   }
 };

@@ -3,7 +3,7 @@
 #include <chrono>
 #include "moveGenHelpers.h"
 #include "lookUpTables.h"
-#include "gameTree.h"
+#include "search.h"
 
 namespace shogi {
 namespace engine {

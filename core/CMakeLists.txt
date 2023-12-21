@@ -5,7 +5,6 @@ set(headerFiles
     include/engine.h
     engine/evaluation.h
     engine/game.h
-    engine/gameTree.h
     engine/GPUsearchHelpers.h
     engine/lookUpTables.h
     engine/moveGen.h
@@ -22,7 +21,6 @@ set(sourceFiles
     engine/engine.cu
     engine/evaluation.cu
     engine/game.cu
-    engine/gameTree.cu
     engine/moveGen.cu
     engine/moveGenHelpers.cu
     engine/GPUsearchHelpers.cu

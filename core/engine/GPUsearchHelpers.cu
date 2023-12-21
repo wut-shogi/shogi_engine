@@ -44,7 +44,6 @@ __global__ void countWhiteMovesKernel(uint32_t size,
 
   Board board = *startBoard;
   for (int m = 0; m < movesPerBoard; m++) {
-    Move move = inMoves[m * size + index];
     makeMove(board, inMoves[m * size + index]);
   }
 
@@ -77,7 +76,6 @@ __global__ void countBlackMovesKernel(uint32_t size,
 
   Board board = *startBoard;
   for (int m = 0; m < movesPerBoard; m++) {
-    Move move = inMoves[m * size + index];
     makeMove(board, inMoves[m * size + index]);
   }
 

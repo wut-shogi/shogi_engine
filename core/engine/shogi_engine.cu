@@ -1,5 +1,5 @@
 #include "../../include/shogi_engine.h"
-#include "GameTree.h"
+#include "search.h"
 
 static bool afterInit = false;
 
@@ -13,8 +13,15 @@ static std::string getBestMoveUSI(const shogi::engine::Board& board,
 }
 
 bool init() {
-  afterInit = shogi::engine::search::init();
+  if (!afterInit)
+    afterInit = shogi::engine::search::init();
   return afterInit;
+}
+
+void cleanup() {
+  if (afterInit)
+    shogi::engine::search::cleanup();
+  afterInit = false;
 }
 
 BSTR getAllLegalMoves(const char* SFENstring) {
@@ -41,7 +48,7 @@ BSTR getBestMove(const char* SFENstring,
       shogi::engine::Board::FromSFEN(SFENstring, isWhite);
   std::string bestMoveString = "";
   if (afterInit)
-   bestMoveString = getBestMoveUSI(board, isWhite, maxDepth);
+    bestMoveString = getBestMoveUSI(board, isWhite, maxDepth);
   std::wstring bestMoveWstring(bestMoveString.begin(), bestMoveString.end());
   return SysAllocString(bestMoveWstring.c_str());
 }

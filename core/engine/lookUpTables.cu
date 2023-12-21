@@ -255,11 +255,20 @@ void init() {
   initRankMask(CPU::lookUpTables.rankMask);
   initFileMask(CPU::lookUpTables.fileMask);
 }
+
+void cleanup() {
+  delete[] CPU::lookUpTables.rankAttacks;
+  delete[] CPU::lookUpTables.fileAttacks;
+  delete[] CPU::lookUpTables.diagRightAttacks;
+  delete[] CPU::lookUpTables.diagLeftAttacks;
+  delete[] CPU::lookUpTables.rankMask;
+  delete[] CPU::lookUpTables.fileMask;
+}
 }  // namespace CPU
 namespace GPU {
 __device__ __constant__ LookUpTables lookUpTables[1];
+static LookUpTables lookUpsTables_Host;
 int init() {
-  LookUpTables lookUpsTables_Host;
   cudaMalloc((void**)&lookUpsTables_Host.rankAttacks,
              ARRAY_SIZE * sizeof(Bitboard));
   cudaMalloc((void**)&lookUpsTables_Host.fileAttacks,
@@ -352,6 +361,17 @@ int init() {
     return -1;
   }
   return 0;
+}
+
+void cleanup() {
+  cudaFree(GPU::lookUpsTables_Host.rankAttacks);
+  cudaFree(GPU::lookUpsTables_Host.fileAttacks);
+  cudaFree(GPU::lookUpsTables_Host.diagRightAttacks);
+  cudaFree(GPU::lookUpsTables_Host.diagLeftAttacks);
+  cudaFree(GPU::lookUpsTables_Host.rankMask);
+  cudaFree(GPU::lookUpsTables_Host.fileMask);
+  cudaFree(GPU::lookUpsTables_Host.startSqDiagRight);
+  cudaFree(GPU::lookUpsTables_Host.startSqDiagLeft);
 }
 }  // namespace GPU
 
