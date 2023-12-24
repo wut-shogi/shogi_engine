@@ -10,8 +10,13 @@ class MoveList {
  public:
   explicit MoveList(const Board& board, bool isWhite) {
     Bitboard validMoves, attackedByEnemy, pinned;
-    isWhite ? getWhitePiecesInfo(board, pinned, validMoves, attackedByEnemy)
-            : getBlackPiecesInfo(board, pinned, validMoves, attackedByEnemy);
+    try {
+      isWhite ? getWhitePiecesInfo(board, pinned, validMoves, attackedByEnemy)
+              : getBlackPiecesInfo(board, pinned, validMoves, attackedByEnemy);
+    } catch (...) {
+      std::cout << "err" << std::endl;
+    }
+    
     uint32_t count =
         isWhite ? countWhiteMoves(board, pinned, validMoves, attackedByEnemy)
                 : countBlackMoves(board, pinned, validMoves, attackedByEnemy);
@@ -42,9 +47,9 @@ __host__ uint64_t perft(Board& board,
   if (depth == 1) {
     return moves.size();
   }
+  Board oldBoard = board;
   for (const auto& move : moves) {
     movesFromRoot.push_back(move);
-    Board oldBoard = board;
     MoveInfo moveReturnInfo = makeMove<true>(board, move);
     if constexpr (Root) {
       counts.push_back(

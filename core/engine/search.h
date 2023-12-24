@@ -5,16 +5,23 @@
 
 namespace shogi {
 namespace engine {
-namespace search {
+namespace SEARCH {
 
 bool init();
 
 void cleanup();
 
-Move GetBestMove(const Board& board,
-                 bool isWhite,
-                 uint16_t depth,
-                 uint16_t maxDepth);
-}  // namespace search
+Move GetBestMove(const Board& board, bool isWhite, uint16_t maxDepth);
+
+Move GetBestMoveAlphaBeta(const Board& board, bool isWhite, uint16_t maxDepth);
+
+int16_t alphaBeta(Board& board,
+                  bool isWhite,
+                  uint16_t depth,
+                  int16_t alpha,
+                  int16_t beta,
+                  std::vector<uint32_t>& nodesSearched);
+
+}  // namespace SEARCH
 }  // namespace engine
 }  // namespace shogi

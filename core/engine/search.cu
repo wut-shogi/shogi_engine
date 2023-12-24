@@ -1,10 +1,12 @@
+#include "CPUsearchHelpers.h"
 #include "GPUsearchHelpers.h"
-#include "search.h"
+#include "evaluation.h"
 #include "lookUpTables.h"
+#include "search.h"
 
 namespace shogi {
 namespace engine {
-namespace search {
+namespace SEARCH {
 
 uint8_t* d_Buffer;
 uint32_t d_BufferSize = 0;
@@ -37,7 +39,6 @@ void cleanup() {
 // True if reached max depth false if not
 Move GetBestMove(const Board& board,
                  bool isWhite,
-                 uint16_t depth,
                  uint16_t maxDepth) {
   Board* d_Board = (Board*)d_Buffer;
   cudaMemcpy(d_Board, &board, sizeof(Board), cudaMemcpyHostToDevice);
@@ -50,7 +51,8 @@ Move GetBestMove(const Board& board,
   // To count how much moves it will generate we need
   // (size+1) * sizeof(uint32_t) + 3 * 3 * size * sizeof(uint32_t) +
   // allMovesSize * depth * sizeof(Move)
-  uint32_t occupiedMemmory = layerSize.back() * depth * sizeof(Move);
+  uint32_t occupiedMemmory = 0;
+  uint16_t depth = 0;
   while (depth < maxDepth) {
     occupiedMemmory += (layerSize.back() + 1) * sizeof(uint32_t);
     if (occupiedMemmory + 3 * 3 * layerSize.back() * sizeof(uint32_t) >=
@@ -117,6 +119,90 @@ Move GetBestMove(const Board& board,
   return bestMove;
 }
 
-}  // namespace search
+Move GetBestMoveAlphaBeta(const Board& board,
+                                        bool isWhite,
+                                        uint16_t maxDepth) {
+  CPU::MoveList rootMoves(board, isWhite);
+  std::vector<uint32_t> nodesSearched(maxDepth, 0);
+  CPU::MoveList moves(board, isWhite);
+  int16_t score = isWhite ? INT16_MIN : INT16_MAX;
+  Move bestMove;
+  Board newBoard = board;
+  for (const auto& move : moves) {
+    makeMove(newBoard, move);
+    int16_t result = alphaBeta(newBoard, !isWhite, maxDepth-1, INT16_MIN,
+                               INT16_MAX, nodesSearched);
+    newBoard = board;
+    if ((isWhite && result > score) || (!isWhite && result < score)) {
+      bestMove = move;
+      score = result;
+    }
+  }
+  std::cout << "Generated: " << moves.size() << " positions on depth: " << 1
+            << std::endl;
+  for (int i = 1; i < nodesSearched.size(); i++) {
+    std::cout << "Generated: " << nodesSearched[i]
+              << " positions on depth: " << i+1 << std::endl;
+  }
+  return bestMove;
+}
+
+int16_t alphaBeta(Board& board,
+                  bool isWhite,
+                  uint16_t depth,
+                  int16_t alpha,
+                  int16_t beta,
+                  std::vector<uint32_t>& nodesSearched) {
+  CPU::MoveList moves(board, isWhite);
+  if (moves.size() == 0) {
+    return isWhite ? INT16_MIN : INT16_MAX;
+  }
+  if (depth == 0) {
+    return evaluate(board);
+  }
+  Board oldBoard = board;
+  int16_t result = 0;
+  Move bestMove;
+  bestMove.from = 0;
+  bestMove.to = 0;
+  bestMove.promotion = 0;
+  if (isWhite) {
+      result = INT16_MIN;
+    for (const Move& move : moves) {
+      makeMove(board, move);
+      result =
+          alphaBeta(board, !isWhite, depth - 1, alpha, beta, nodesSearched);
+      board = oldBoard;
+      nodesSearched[nodesSearched.size() - depth]++;
+      if (result > alpha) {
+        alpha = result;
+        bestMove = move;
+      }
+      if (alpha >= beta) {
+        break;
+      }
+    }
+    result = alpha;
+  } else {
+    for (const Move& move : moves) {
+      makeMove(board, move);
+      result =
+          alphaBeta(board, !isWhite, depth - 1, alpha, beta, nodesSearched);
+      board = oldBoard;
+      nodesSearched[nodesSearched.size() - depth]++;
+      if (result < beta) {
+        beta = result;
+        bestMove = move;
+      }
+      if (alpha >= beta) {
+        break;
+      }
+    }
+    result = beta;
+  }
+  return result;
+}
+
+}  // namespace SEARCH
 }  // namespace engine
 }  // namespace shogi

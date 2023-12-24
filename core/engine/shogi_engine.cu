@@ -8,19 +8,19 @@ static std::string getBestMoveUSI(const shogi::engine::Board& board,
                                   unsigned int maxDepth,
                                   unsigned int maxTime = 0) {
   shogi::engine::Move bestMove =
-      shogi::engine::search::GetBestMove(board, isWhite, 0, maxDepth);
+      shogi::engine::SEARCH::GetBestMove(board, isWhite, 0, maxDepth);
   return shogi::engine::moveToUSI(bestMove);
 }
 
 bool init() {
   if (!afterInit)
-    afterInit = shogi::engine::search::init();
+    afterInit = shogi::engine::SEARCH::init();
   return afterInit;
 }
 
 void cleanup() {
   if (afterInit)
-    shogi::engine::search::cleanup();
+    shogi::engine::SEARCH::cleanup();
   afterInit = false;
 }
 

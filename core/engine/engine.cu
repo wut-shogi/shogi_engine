@@ -4,28 +4,37 @@
 #include "game.h"
 #include "lookUpTables.h"
 #include "moveGenHelpers.h"
+#include "search.h"
 namespace shogi {
 namespace engine {
 
 void test() {
   Board startingBoard = Boards::STARTING_BOARD();
   print_Board(startingBoard);
-  bool isWhite = true;
-  Board board = Board::FromSFEN(
-      "1R3G1nl/4g1kg1/1p2p+bpp1/p+B1Ls1s1p/Pn3+l3/KSPpP3P/3P+rpP2/2G6/L8 b "
-      "NPsn3p 1",
-      isWhite);
+  bool isWhite = false;
 
-  board = Board::FromSFEN(
-      "lnsgkgsn1/9/pppp1pppp/4p2+B1/B1R1L3b/4l1r2/PPPPPP1PP/9/1NSGKGSNL b",
-      isWhite);
+  /*Board board;
+  board[BB::Type::PAWN] = {0, 133955584, 133955584};
+  board[BB::Type::PAWN] = {67371008, 0, 257};
+  board[BB::Type::PAWN] = {34078720, 0, 130};
+  board[BB::Type::PAWN] = {34816, 0, 68};
+  board[BB::Type::PAWN] = {10485760, 0, 40};
+  board[BB::Type::PAWN] = {1024, 0, 65536};
+  board[BB::Type::PAWN] = {65536, 0, 1024};
+  board[BB::Type::PAWN] = {4096, 0, 4096};
+  board[BB::Type::PAWN] = {0, 0, 0};
+  board[BB::Type::PAWN] = {112040960, 133955584, 0};
+  board[BB::Type::PAWN] = {0, 0, 134026735};
+  print_Board(board);*/
 
-  
   std::vector<Move> movesFromRoot;
-  search::init();
-  CPU::perft<true, true>(startingBoard, 3, movesFromRoot, false);
-  //search::GetBestMove(board, isWhite, 0, 5);
-  search::cleanup();
+  //SEARCH::init();
+  // CPU::perft<true, true>(startingBoard, 4, movesFromRoot, false);
+  //Move bestMove = SEARCH::GetBestMove(startingBoard, isWhite, 5);
+  //Move bestMoveCPU = SEARCH::GetBestMoveAlphaBeta(startingBoard, isWhite, 5);
+  // search::cleanup();
+  GameSimulator simulator({SEARCH::GetBestMoveAlphaBeta, SEARCH::GetBestMove});
+  simulator.Run();
   std::cout << "Done!" << std::endl;
 }
 

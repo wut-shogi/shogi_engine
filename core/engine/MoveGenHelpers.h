@@ -109,6 +109,7 @@ union MoveInfo {
 
 template <bool returnInfo>
 __host__ __device__ inline MoveInfo makeMove(Board& board, Move move) {
+  Board oldBoard = board;
   uint64_t one = 1;
   Region toRegionIdx = squareToRegion(static_cast<Square>(move.to));
   uint32_t toRegion = 1 << (REGION_SIZE - 1 - move.to % REGION_SIZE);
@@ -180,6 +181,12 @@ __host__ __device__ inline MoveInfo makeMove(Board& board, Move move) {
     board.inHand.value -= addedValue;
     board[static_cast<BB::Type>(offset % 7)][toRegionIdx] |= toRegion;
     board[static_cast<BB::Type>(offset / 7 + BB::Type::ALL_WHITE)][toRegionIdx] |= toRegion;
+  }
+
+  if (popcount(board[BB::Type::KING][TOP]) +
+          popcount(board[BB::Type::KING][MID]) +
+              popcount(board[BB::Type::KING][BOTTOM]) < 2) {
+    printf("err\n");
   }
   return info;
 }
