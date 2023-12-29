@@ -22,6 +22,8 @@ int16_t alphaBeta(Board& board,
                   int16_t beta,
                   std::vector<uint32_t>& nodesSearched);
 
+Move GetBestMove2(const Board& board, bool isWhite, uint16_t maxDepth);
+
 }  // namespace SEARCH
 }  // namespace engine
 }  // namespace shogi

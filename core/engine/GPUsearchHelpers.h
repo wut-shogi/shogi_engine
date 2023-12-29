@@ -1,6 +1,7 @@
 #pragma once
 #include <thrust/device_ptr.h>
 #include "Board.h"
+#include "MoveGenHelpers.h"
 
 namespace shogi {
 namespace engine {
@@ -56,6 +57,45 @@ int gatherValuesMin(uint32_t size,
                     int16_t* inValues,
                     int16_t* outValues,
                     uint32_t* bestIndex);
+
+int countWhiteMoves(uint32_t size,
+                    int16_t movesPerBoard,
+                    Board* startBoard,
+                    Move* inMoves,
+                    uint32_t inMovesSize,
+                    uint32_t inMovesOffset,
+                    uint32_t* outOffsets,
+                    uint32_t* outBitboards);
+
+int countBlackMoves(uint32_t size,
+                    int16_t movesPerBoard,
+                    Board* startBoard,
+                    Move* inMoves,
+                    uint32_t inMovesSize,
+                    uint32_t inMovesOffset,
+                    uint32_t* outOffsets,
+                    uint32_t* outBitboards);
+
+int generateWhiteMoves(uint32_t size,
+                       int16_t movesPerBoard,
+                       Board* startBoard,
+                       Move* inMoves,
+                       uint32_t inMovesSize,
+                       uint32_t inMovesOffset,
+                       uint32_t* inOffsets,
+                       uint32_t* inBitboards,
+                       Move* outMoves);
+
+int generateBlackMoves(uint32_t size,
+                       int16_t movesPerBoard,
+                       Board* startBoard,
+                       Move* inMoves,
+                       uint32_t inMovesSize,
+                       uint32_t inMovesOffset,
+                       uint32_t* inOffsets,
+                       uint32_t* inBitboards,
+                       Move* outMoves);
+
 }  // namespace GPU
 }  // namespace engine
 }  // namespace shogi
