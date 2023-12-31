@@ -38,7 +38,7 @@ void test() {
        std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
    std::cout << "Time: " << duration.count() << " ms" << std::endl;
    std::cout << moveToUSI(bestMove) << std::endl;*/
-  Move move;
+  /*Move move;
   move.from = G5;
   move.to = F5;
   move.promotion = 0;
@@ -58,12 +58,12 @@ void test() {
   move.from = H2;
   move.to = H5;
   move.promotion = 0;
-  makeMove(board, move);
+  makeMove(board, move);*/
 
   //CPU::MoveList moves(board, true);
 
   print_Board(board);
-  CPU::perft<true, true>(board, 1, movesFromRoot, true);
+  CPU::perft<true, true>(board, 6, movesFromRoot, false);
   // Move bestMove = SEARCH::GetBestMove(startingBoard, isWhite, 5);
   /* start = std::chrono::high_resolution_clock::now();
   Move bestMoveCPU = SEARCH::GetBestMoveAlphaBeta(board, isWhite, 4);

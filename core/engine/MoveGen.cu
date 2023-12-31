@@ -582,8 +582,9 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
     moves = moveS(pieces) & validMoves;
     if (pinnedPieces & board[BB::Type::PAWN]) {
       pieces = pinnedPieces & board[BB::Type::PAWN] &
-               board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-      moves |= moveS(pieces) & pinningPieces & kingRayFile;
+               board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED] &
+               kingRayFile;
+      moves |= moveS(pieces) & validMoves;
     }
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
@@ -642,14 +643,12 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
              board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
     if (pieces) {
       moves = {0, 0, 0};
-      // We can or all moves because pinned piece can only have one legal moves
-      // which is to capture enemy piece which is pinning it. One enemy piece
-      // can pin only one figure.
-      moves |= moveS(pieces) & pinningPieces & kingRayFile;
+      moves |= moveS(pieces & kingRayFile);
       moves |=
-          (moveNW(pieces) | moveSE(pieces)) & pinningPieces & kingRayDiagLeft;
+          moveNW(pieces & kingRayDiagLeft) | moveSE(pieces & kingRayDiagLeft);
       moves |=
-          (moveNE(pieces) | moveSW(pieces)) & pinningPieces & kingRayDiagRight;
+          moveNE(pieces & kingRayDiagRight) | moveSW(pieces & kingRayDiagRight);
+      moves &= validMoves;
       ourAttacks |= moves;
       numberOfMoves += popcount(moves[TOP]) +
                        popcount(moves[MID] & BOTTOM_RANK) *
@@ -700,14 +699,11 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
              board[BB::Type::ALL_WHITE];
     if (pieces) {
       moves = {0, 0, 0};
-      // We can or all moves because pinned piece can only have one legal moves
-      // which is to capture enemy piece which is pinning it. One enemy piece
-      // can pin only one figure.
-      moves |= (moveN(pieces) | moveS(pieces)) & pinningPieces & kingRayFile;
-      moves |= moveSE(pieces) & pinningPieces & kingRayDiagLeft;
-      moves |= moveSW(pieces) & pinningPieces & kingRayDiagRight;
-      moves |=
-          (moveE(pieces) | moveW(pieces)) & pinningPieces & kingRayDiagRight;
+      moves |= moveN(pieces & kingRayFile) | moveS(pieces & kingRayFile);
+      moves |= moveSE(pieces & kingRayDiagLeft);
+      moves |= moveSW(pieces & kingRayDiagRight);
+      moves |= moveE(pieces & kingRayRank) | moveW(pieces & kingRayRank);
+      moves &= validMoves;
       ourAttacks |= moves;
       numberOfMoves +=
           popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
@@ -716,9 +712,10 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
 
   // Lance moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::LANCE] &
-             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-    iterator.Init(pieces);
+    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
+    iterator.Init((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile));
     while (iterator.Next()) {
       square = iterator.GetCurrentSquare();
       moves = LookUpTables::getFileAttacks(square, occupied) &
@@ -728,23 +725,6 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
           popcount(moves[TOP]) + popcount(moves[MID]) +
           popcount(moves[BOTTOM] & ~BOTTOM_RANK) * 2 +  // promotions
           popcount(moves[BOTTOM] & BOTTOM_RANK);        // forced promotion
-    }
-
-    pieces = pinnedPieces & board[BB::Type::LANCE] &
-             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-    if (pieces) {
-      iterator.Init(pieces);
-      while (iterator.Next()) {
-        square = iterator.GetCurrentSquare();
-        moves = LookUpTables::getFileAttacks(square, occupied) &
-                ~LookUpTables::getRankMask(squareToRank(square)) &
-                pinningPieces & kingRayFile;
-        ourAttacks |= moves;
-        numberOfMoves +=
-            popcount(moves[TOP]) + popcount(moves[MID]) +
-            popcount(moves[BOTTOM] & ~BOTTOM_RANK) * 2 +  // promotions
-            popcount(moves[BOTTOM] & BOTTOM_RANK);        // forced promotion
-      }
     }
   }
 
@@ -772,12 +752,26 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayDiagLeft);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
-                 LookUpTables::getDiagLeftAttacks(square, occupied)) &
-                pinningPieces & (kingRayDiagLeft | kingRayDiagRight);
+        moves = LookUpTables::getDiagLeftAttacks(square, occupied) & validMoves;
+        ourAttacks |= moves;
+        if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
+          numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
+                            popcount(moves[BOTTOM])) *
+                           2;
+        } else {
+          numberOfMoves +=
+              popcount(moves[TOP]) + popcount(moves[MID]) +
+              popcount(moves[BOTTOM]) * 2;  // end in promotion Zone
+        }
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        moves =
+            LookUpTables::getDiagRightAttacks(square, occupied) & validMoves;
         ourAttacks |= moves;
         if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
           numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
@@ -816,12 +810,25 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
              ~board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayRank);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (LookUpTables::getRankAttacks(square, occupied) |
-                 LookUpTables::getFileAttacks(square, occupied)) &
-                pinningPieces & (kingRayRank | kingRayFile);
+        moves = LookUpTables::getRankAttacks(square, occupied) & validMoves;
+        ourAttacks |= moves;
+        if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
+          numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
+                            popcount(moves[BOTTOM])) *
+                           2;
+        } else {
+          numberOfMoves +=
+              popcount(moves[TOP]) + popcount(moves[MID]) +
+              popcount(moves[BOTTOM]) * 2;  // end in promotion Zone
+        }
+      }
+      iterator.Init(pieces & kingRayFile);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        moves = LookUpTables::getFileAttacks(square, occupied) & validMoves;
         ourAttacks |= moves;
         if (square >= WHITE_PROMOTION_START) {  // Starting from promotion zone
           numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
@@ -856,19 +863,40 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_WHITE] & board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayDiagLeft);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        Bitboard horse = Bitboard(square);
-        moves = (((LookUpTables::getDiagRightAttacks(square, occupied) |
-                   LookUpTables::getDiagLeftAttacks(square, occupied)) &
-                  (kingRayDiagLeft | kingRayDiagRight)) |
-                 ((moveN(horse) | moveE(horse)) & kingRayFile) |
-                 ((moveS(horse) | moveW(horse)) & kingRayRank)) &
-                pinningPieces;
+        moves = LookUpTables::getDiagLeftAttacks(square, occupied) & validMoves;
         ourAttacks |= moves;
         numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
                           popcount(moves[BOTTOM]));
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        moves =
+            LookUpTables::getDiagRightAttacks(square, occupied) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
+                          popcount(moves[BOTTOM]));
+      }
+      iterator.Init(pieces & kingRayFile);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard horse(square);
+        moves = (moveN(horse) | moveS(horse)) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
+                         popcount(moves[BOTTOM]);
+      }
+      iterator.Init(pieces & kingRayRank);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard horse(square);
+        moves = (moveE(horse) | moveW(horse)) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
+                         popcount(moves[BOTTOM]);
       }
     }
   }
@@ -893,19 +921,41 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
              board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayRank);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard dragon(square);
-        moves = (((LookUpTables::getRankAttacks(square, occupied) |
-                   LookUpTables::getFileAttacks(square, occupied)) &
-                  (kingRayRank | kingRayFile)) |
-                 ((moveNW(dragon) | moveSE(dragon)) & kingRayDiagLeft) |
-                 ((moveNE(dragon) | moveSW(dragon)) & kingRayDiagRight)) &
-                pinningPieces;
+        moves = LookUpTables::getRankAttacks(square, occupied) & validMoves;
         ourAttacks |= moves;
         numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
                           popcount(moves[BOTTOM]));
+      }
+      iterator.Init(pieces & kingRayFile);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard dragon(square);
+        moves = LookUpTables::getFileAttacks(square, occupied) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
+                          popcount(moves[BOTTOM]));
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard dragon(square);
+        moves = (moveNE(dragon) | moveSW(dragon)) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
+                         popcount(moves[BOTTOM]);
+      }
+      iterator.Init(pieces & kingRayDiagLeft);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard dragon(square);
+        moves = (moveNW(dragon) | moveSE(dragon)) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
+                         popcount(moves[BOTTOM]);
       }
     }
   }
@@ -1015,8 +1065,9 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
     moves = moveN(pieces) & validMoves;
     if (pinnedPieces & board[BB::Type::PAWN]) {
       pieces = ~pinnedPieces & board[BB::Type::PAWN] &
-               board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-      moves |= moveN(pieces) & pinningPieces & kingRayFile;
+               board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED] &
+               kingRayFile;
+      moves |= moveN(pieces) & validMoves;
     }
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP] & TOP_RANK) +  // forced promotions
@@ -1075,11 +1126,12 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
              board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
     if (pieces) {
       moves = {0, 0, 0};
-      moves |= moveN(pieces) & pinningPieces & kingRayFile;
+      moves |= moveN(pieces & kingRayFile);
       moves |=
-          (moveNW(pieces) | moveSE(pieces)) & pinningPieces & kingRayDiagLeft;
+          moveNW(pieces & kingRayDiagLeft) | moveSE(pieces & kingRayDiagLeft);
       moves |=
-          (moveNE(pieces) | moveSW(pieces)) & pinningPieces & kingRayDiagRight;
+          moveNE(pieces & kingRayDiagRight) | moveSW(pieces & kingRayDiagRight);
+      moves &= validMoves;
       ourAttacks |= moves;
       numberOfMoves += popcount(moves[TOP]) * 2 +  // promotions
                        popcount(moves[MID] & TOP_RANK) *
@@ -1130,11 +1182,11 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
              board[BB::Type::ALL_BLACK];
     if (pieces) {
       moves = {0, 0, 0};
-      moves |= (moveN(pieces) | moveS(pieces)) & pinningPieces & kingRayFile;
-      moves |=
-          (moveE(pieces) | moveW(pieces)) & pinningPieces & kingRayDiagRight;
-      moves |= moveNE(pieces) & pinningPieces & kingRayDiagRight;
-      moves |= moveNW(pieces) & pinningPieces & kingRayDiagLeft;
+      moves |= moveN(pieces & kingRayFile) | moveS(pieces & kingRayFile);
+      moves |= moveE(pieces & kingRayRank) | moveW(pieces & kingRayRank);
+      moves |= moveNE(pieces & kingRayDiagRight);
+      moves |= moveNW(pieces & kingRayDiagLeft);
+      moves &= validMoves;
       ourAttacks |= moves;
       numberOfMoves +=
           popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
@@ -1143,9 +1195,10 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
 
   // Lance moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::LANCE] &
-             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-    iterator.Init(pieces);
+    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
+    iterator.Init((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile));
     while (iterator.Next()) {
       square = iterator.GetCurrentSquare();
       moves = LookUpTables::getFileAttacks(square, occupied) &
@@ -1154,22 +1207,6 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
       numberOfMoves += popcount(moves[TOP] & TOP_RANK) +  // forced promotions
                        popcount(moves[TOP] & ~TOP_RANK) * 2 +  // promotions
                        popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    }
-
-    pieces = pinnedPieces & board[BB::Type::LANCE] &
-             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-    if (pieces) {
-      iterator.Init(pieces);
-      while (iterator.Next()) {
-        square = iterator.GetCurrentSquare();
-        moves = LookUpTables::getFileAttacks(square, occupied) &
-                LookUpTables::getRankMask(squareToRank(square)) &
-                pinningPieces & kingRayFile;
-        ourAttacks |= moves;
-        numberOfMoves += popcount(moves[TOP] & TOP_RANK) +  // forced promotions
-                         popcount(moves[TOP] & ~TOP_RANK) * 2 +  // promotions
-                         popcount(moves[MID]) + popcount(moves[BOTTOM]);
-      }
     }
   }
 
@@ -1197,12 +1234,25 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayDiagLeft);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (LookUpTables::getDiagRightAttacks(square, occupied) |
-                 LookUpTables::getDiagLeftAttacks(square, occupied)) &
-                pinningPieces & (kingRayDiagLeft | kingRayDiagRight);
+        moves = LookUpTables::getDiagLeftAttacks(square, occupied) & validMoves;
+        ourAttacks |= moves;
+        if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
+          numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
+                            popcount(moves[BOTTOM])) *
+                           2;
+        } else {
+          numberOfMoves += popcount(moves[TOP]) * 2 +  // end in promotion Zone
+                           popcount(moves[MID]) + popcount(moves[BOTTOM]);
+        }
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        moves =
+            LookUpTables::getDiagRightAttacks(square, occupied) & validMoves;
         ourAttacks |= moves;
         if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
           numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
@@ -1240,12 +1290,24 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
              ~board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayRank);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        moves = (LookUpTables::getRankAttacks(square, occupied) |
-                 LookUpTables::getFileAttacks(square, occupied)) &
-                pinningPieces & (kingRayRank | kingRayFile);
+        moves = LookUpTables::getRankAttacks(square, occupied) & validMoves;
+        ourAttacks |= moves;
+        if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
+          numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
+                            popcount(moves[BOTTOM])) *
+                           2;
+        } else {
+          numberOfMoves += popcount(moves[TOP]) * 2 +  // end in promotion Zone
+                           popcount(moves[MID]) + popcount(moves[BOTTOM]);
+        }
+      }
+      iterator.Init(pieces & kingRayFile);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        moves = LookUpTables::getFileAttacks(square, occupied) & validMoves;
         ourAttacks |= moves;
         if (square <= BLACK_PROMOTION_END) {  // Starting from promotion zone
           numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
@@ -1279,19 +1341,40 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
     pieces = ~pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_BLACK] & board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayDiagLeft);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
-        Bitboard horse = Bitboard(square);
-        moves = (((LookUpTables::getDiagRightAttacks(square, occupied) |
-                   LookUpTables::getDiagLeftAttacks(square, occupied)) &
-                  (kingRayDiagLeft | kingRayDiagRight)) |
-                 ((moveN(horse) | moveE(horse)) & kingRayFile) |
-                 ((moveS(horse) | moveW(horse)) & kingRayRank)) &
-                pinningPieces;
+        moves = LookUpTables::getDiagLeftAttacks(square, occupied) & validMoves;
         ourAttacks |= moves;
         numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
                           popcount(moves[BOTTOM]));
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        moves =
+            LookUpTables::getDiagRightAttacks(square, occupied) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
+                          popcount(moves[BOTTOM]));
+      }
+      iterator.Init(pieces & kingRayFile);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard horse(square);
+        moves = (moveN(horse) | moveS(horse)) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
+                         popcount(moves[BOTTOM]);
+      }
+      iterator.Init(pieces & kingRayRank);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard horse(square);
+        moves = (moveE(horse) | moveW(horse)) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
+                         popcount(moves[BOTTOM]);
       }
     }
   }
@@ -1316,19 +1399,41 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
              board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayRank);
       while (iterator.Next()) {
         square = iterator.GetCurrentSquare();
         Bitboard dragon(square);
-        moves = (((LookUpTables::getRankAttacks(square, occupied) |
-                   LookUpTables::getFileAttacks(square, occupied)) &
-                  (kingRayRank | kingRayFile)) |
-                 ((moveNW(dragon) | moveSE(dragon)) & kingRayDiagLeft) |
-                 ((moveNE(dragon) | moveSW(dragon)) & kingRayDiagRight)) &
-                pinningPieces;
+        moves = LookUpTables::getRankAttacks(square, occupied) & validMoves;
         ourAttacks |= moves;
         numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
                           popcount(moves[BOTTOM]));
+      }
+      iterator.Init(pieces & kingRayFile);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard dragon(square);
+        moves = LookUpTables::getFileAttacks(square, occupied) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += (popcount(moves[TOP]) + popcount(moves[MID]) +
+                          popcount(moves[BOTTOM]));
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard dragon(square);
+        moves = (moveNE(dragon) | moveSW(dragon)) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
+                         popcount(moves[BOTTOM]);
+      }
+      iterator.Init(pieces & kingRayDiagLeft);
+      while (iterator.Next()) {
+        square = iterator.GetCurrentSquare();
+        Bitboard dragon(square);
+        moves = (moveNW(dragon) | moveSE(dragon)) & validMoves;
+        ourAttacks |= moves;
+        numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
+                         popcount(moves[BOTTOM]);
       }
     }
   }
@@ -1444,14 +1549,11 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
 
   // Pawn moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::PAWN] &
-             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-    moves = moveS(pieces) & validMoves;
-    if (pinnedPieces & board[BB::Type::PAWN]) {
-      pieces = pinnedPieces & board[BB::Type::PAWN] &
-               board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-      moves |= moveS(pieces) & pinningPieces & kingRayFile;
-    }
+    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
+    moves = moveS((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1520,8 +1622,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
   {
     pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_WHITE] &
              ~board[BB::Type::PROMOTED];
-    moves = moveS(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveS(pieces & pinnedPieces) & pinningPieces & kingRayFile;
+    moves = moveS((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1537,8 +1640,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
         moveNumber++;
       }
     }
-    moves = moveSE(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveSE(pieces & pinnedPieces) & pinningPieces & kingRayDiagLeft;
+    moves = moveSE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1554,8 +1658,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
         moveNumber++;
       }
     }
-    moves = moveSW(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveSW(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveSW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1571,8 +1676,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
         moveNumber++;
       }
     }
-    moves = moveNE(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveNE(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveNE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1589,8 +1695,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
         moveNumber++;
       }
     }
-    moves = moveNW(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveNW(pieces & pinnedPieces) & pinningPieces & kingRayDiagLeft;
+    moves = moveNW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1616,8 +1723,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
                 board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                board[BB::Type::PROMOTED])) &
              board[BB::Type::ALL_WHITE];
-    moves = moveS(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveS(pieces & pinnedPieces) & pinningPieces & kingRayFile;
+    moves = moveS((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1627,8 +1735,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveSE(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveSE(pieces & pinnedPieces) & pinningPieces & kingRayDiagLeft;
+    moves = moveSE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1638,8 +1747,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveSW(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveSW(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveSW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1649,8 +1759,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveE(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveE(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveE((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1660,8 +1771,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveW(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveW(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveW((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1671,8 +1783,9 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveN(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveN(pieces & pinnedPieces) & pinningPieces & kingRayFile;
+    moves = moveN((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -1686,9 +1799,10 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
 
   // Lances moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::LANCE] &
-             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-    iterator.Init(pieces);
+    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
+    iterator.Init((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile));
     while (iterator.Next()) {
       move.from = iterator.GetCurrentSquare();
       moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from),
@@ -1711,37 +1825,6 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
           move.promotion = 0;
           movesArray[moveNumber] = move;
           moveNumber++;
-        }
-      }
-    }
-
-    pieces = pinnedPieces & board[BB::Type::LANCE] &
-             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-    if (pieces) {
-      iterator.Init(pieces);
-      while (iterator.Next()) {
-        move.from = iterator.GetCurrentSquare();
-        moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from),
-                                             occupied) &
-                ~LookUpTables::getRankMask(
-                    squareToRank(static_cast<Square>(move.from))) &
-                pinningPieces & kingRayFile;
-        ourAttacks |= moves;
-        movesIterator.Init(moves);
-        while (movesIterator.Next()) {
-          move.to = movesIterator.GetCurrentSquare();
-          // Promotion
-          if (move.to >= WHITE_PROMOTION_START) {
-            move.promotion = 1;
-            movesArray[moveNumber] = move;
-            moveNumber++;
-          }
-          // Not when forced promotion
-          if (move.to < WHITE_PAWN_LANCE_FORECED_PROMOTION_START) {
-            move.promotion = 0;
-            movesArray[moveNumber] = move;
-            moveNumber++;
-          }
         }
       }
     }
@@ -1779,14 +1862,34 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayDiagLeft);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (LookUpTables::getDiagRightAttacks(
-                     static_cast<Square>(move.from), occupied) |
-                 LookUpTables::getDiagLeftAttacks(
-                     static_cast<Square>(move.from), occupied)) &
-                pinningPieces & (kingRayDiagLeft | kingRayDiagRight);
+        moves = LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from),
+                                                 occupied) &
+                validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+          // Promotion
+          if (move.to >= WHITE_PROMOTION_START ||
+              move.from >= WHITE_PROMOTION_START) {
+            move.promotion = 1;
+            movesArray[moveNumber] = move;
+            moveNumber++;
+          }
+        }
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        moves = LookUpTables::getDiagRightAttacks(
+                    static_cast<Square>(move.from), occupied) &
+                validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
         while (movesIterator.Next()) {
@@ -1838,14 +1941,34 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
              ~board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayFile);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (LookUpTables::getRankAttacks(static_cast<Square>(move.from),
-                                              occupied) |
-                 LookUpTables::getFileAttacks(static_cast<Square>(move.from),
-                                              occupied)) &
-                pinningPieces & (kingRayRank | kingRayFile);
+        moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from),
+                                             occupied) &
+                validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+          // Promotion
+          if (move.to >= WHITE_PROMOTION_START ||
+              move.from >= WHITE_PROMOTION_START) {
+            move.promotion = 1;
+            movesArray[moveNumber] = move;
+            moveNumber++;
+          }
+        }
+      }
+      iterator.Init(pieces & kingRayRank);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        moves = LookUpTables::getRankAttacks(static_cast<Square>(move.from),
+                                             occupied) &
+                validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
         while (movesIterator.Next()) {
@@ -1892,22 +2015,60 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_WHITE] & board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayDiagLeft);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        Bitboard horse = Bitboard(static_cast<Square>(move.from));
-        moves = (((LookUpTables::getDiagRightAttacks(
-                       static_cast<Square>(move.from), occupied) |
-                   LookUpTables::getDiagLeftAttacks(
-                       static_cast<Square>(move.from), occupied)) &
-                  (kingRayDiagLeft | kingRayDiagRight)) |
-                 ((moveN(horse) | moveE(horse)) & kingRayFile) |
-                 ((moveS(horse) | moveW(horse)) & kingRayRank)) &
-                pinningPieces;
+        moves = LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from),
+                                                 occupied) &
+                validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
         while (movesIterator.Next()) {
           move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        moves = LookUpTables::getDiagRightAttacks(
+                    static_cast<Square>(move.from), occupied) &
+                validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayFile);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        Bitboard horse(static_cast<Square>(move.from));
+        moves = (moveN(horse) | moveS(horse)) & validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayRank);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        Bitboard horse(static_cast<Square>(move.from));
+        moves = (moveE(horse) | moveW(horse)) & validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
           movesArray[moveNumber] = move;
           moveNumber++;
         }
@@ -1942,22 +2103,60 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_WHITE] &
              board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayFile);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        Bitboard dragon(static_cast<Square>(move.from));
-        moves = (((LookUpTables::getRankAttacks(static_cast<Square>(move.from),
-                                                occupied) |
-                   LookUpTables::getFileAttacks(static_cast<Square>(move.from),
-                                                occupied)) &
-                  (kingRayRank | kingRayFile)) |
-                 ((moveNW(dragon) | moveSE(dragon)) & kingRayDiagLeft) |
-                 ((moveNE(dragon) | moveSW(dragon)) & kingRayDiagRight)) &
-                pinningPieces;
+        moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from),
+                                             occupied) &
+                validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
         while (movesIterator.Next()) {
           move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayRank);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        moves = LookUpTables::getRankAttacks(static_cast<Square>(move.from),
+                                             occupied) &
+                validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        Bitboard dragon(static_cast<Square>(move.from));
+        moves = (moveNE(dragon) | moveSW(dragon)) & validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayDiagLeft);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        Bitboard dragon(static_cast<Square>(move.from));
+        moves = (moveNW(dragon) | moveSE(dragon)) & validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
           movesArray[moveNumber] = move;
           moveNumber++;
         }
@@ -2111,12 +2310,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
   {
     pieces = ~pinnedPieces & board[BB::Type::PAWN] &
              board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-    moves = moveN(pieces) & validMoves;
-    if (pinnedPieces & board[BB::Type::PAWN]) {
-      pieces = ~pinnedPieces & board[BB::Type::PAWN] &
-               board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-      moves |= moveN(pieces) & pinningPieces & kingRayFile;
-    }
+    moves = moveN((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2185,8 +2381,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
   {
     pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_BLACK] &
              ~board[BB::Type::PROMOTED];
-    moves = moveN(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveN(pieces & pinnedPieces) & pinningPieces & kingRayFile;
+    moves = moveN((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2202,8 +2399,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
         moveNumber++;
       }
     }
-    moves = moveNE(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveNE(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveNE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2219,8 +2417,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
         moveNumber++;
       }
     }
-    moves = moveNW(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveNW(pieces & pinnedPieces) & pinningPieces & kingRayDiagLeft;
+    moves = moveNW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2236,8 +2435,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
         moveNumber++;
       }
     }
-    moves = moveSE(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveSE(pieces & pinnedPieces) & pinningPieces & kingRayDiagLeft;
+    moves = moveSE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2253,8 +2453,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
         moveNumber++;
       }
     }
-    moves = moveSW(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveSW(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveSW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2279,8 +2480,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
                 board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                board[BB::Type::PROMOTED])) &
              board[BB::Type::ALL_BLACK];
-    moves = moveN(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveN(pieces & pinnedPieces) & pinningPieces & kingRayFile;
+    moves = moveN((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2290,8 +2492,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveNE(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveNE(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveNE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2301,8 +2504,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveNW(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveNW(pieces & pinnedPieces) & pinningPieces & kingRayDiagLeft;
+    moves = moveNW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2312,8 +2516,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveE(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveE(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveE((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2323,8 +2528,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveW(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveW(pieces & pinnedPieces) & pinningPieces & kingRayDiagRight;
+    moves = moveW((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2334,8 +2540,9 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
       movesArray[moveNumber] = move;
       moveNumber++;
     }
-    moves = moveS(pieces & ~pinnedPieces) & validMoves;
-    moves |= moveS(pieces & pinnedPieces) & pinningPieces & kingRayFile;
+    moves = moveS((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
     while (movesIterator.Next()) {
@@ -2349,9 +2556,10 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
 
   // Lances moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::LANCE] &
+    pieces = board[BB::Type::LANCE] &
              board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-    iterator.Init(pieces);
+    iterator.Init((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile));
     while (iterator.Next()) {
       move.from = iterator.GetCurrentSquare();
       moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from),
@@ -2377,43 +2585,12 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
         }
       }
     }
-
-    pieces = pinnedPieces & board[BB::Type::LANCE] &
-             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-    if (pieces) {
-      iterator.Init(pieces);
-      while (iterator.Next()) {
-        move.from = iterator.GetCurrentSquare();
-        moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from),
-                                             occupied) &
-                LookUpTables::getRankMask(
-                    squareToRank(static_cast<Square>(move.from))) &
-                pinningPieces & kingRayFile;
-        ourAttacks |= moves;
-        movesIterator.Init(moves);
-        while (movesIterator.Next()) {
-          move.to = movesIterator.GetCurrentSquare();
-          // Promotion
-          if (move.to <= BLACK_PROMOTION_END) {
-            move.promotion = 1;
-            movesArray[moveNumber] = move;
-            moveNumber++;
-          }
-          // Not when forced promotion
-          if (move.to > BLACK_PAWN_LANCE_FORCE_PROMOTION_END) {
-            move.promotion = 0;
-            movesArray[moveNumber] = move;
-            moveNumber++;
-          }
-        }
-      }
-    }
   }
 
   // Bishop moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
-             ~board[BB::Type::PROMOTED];
+    pieces = ~pinnedPieces & board[BB::Type::BISHOP] &
+             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.Next()) {
       move.from = iterator.GetCurrentSquare();
@@ -2442,14 +2619,34 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayDiagLeft);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (LookUpTables::getDiagRightAttacks(
-                     static_cast<Square>(move.from), occupied) |
-                 LookUpTables::getDiagLeftAttacks(
-                     static_cast<Square>(move.from), occupied)) &
-                pinningPieces & (kingRayDiagLeft | kingRayDiagRight);
+        moves = LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from),
+                                                 occupied) &
+                validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+          // Promotion
+          if (move.to <= BLACK_PROMOTION_END ||
+              move.from <= BLACK_PROMOTION_END) {
+            move.promotion = 1;
+            movesArray[moveNumber] = move;
+            moveNumber++;
+          }
+        }
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        moves = LookUpTables::getDiagRightAttacks(
+                    static_cast<Square>(move.from), occupied) &
+                validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
         while (movesIterator.Next()) {
@@ -2471,8 +2668,8 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
 
   // Rook moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
-             ~board[BB::Type::PROMOTED];
+    pieces = ~pinnedPieces & board[BB::Type::ROOK] &
+             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.Next()) {
       move.from = iterator.GetCurrentSquare();
@@ -2501,14 +2698,34 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
              ~board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayFile);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        moves = (LookUpTables::getRankAttacks(static_cast<Square>(move.from),
-                                              occupied) |
-                 LookUpTables::getFileAttacks(static_cast<Square>(move.from),
-                                              occupied)) &
-                pinningPieces & (kingRayRank | kingRayFile);
+        moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from),
+                                             occupied) &
+                validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+          // Promotion
+          if (move.to <= BLACK_PROMOTION_END ||
+              move.from <= BLACK_PROMOTION_END) {
+            move.promotion = 1;
+            movesArray[moveNumber] = move;
+            moveNumber++;
+          }
+        }
+      }
+      iterator.Init(pieces & kingRayRank);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        moves = LookUpTables::getRankAttacks(static_cast<Square>(move.from),
+                                             occupied) &
+                validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
         while (movesIterator.Next()) {
@@ -2531,8 +2748,8 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
   move.promotion = 0;
   // Horse moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::BISHOP] & board[BB::Type::ALL_BLACK] &
-             board[BB::Type::PROMOTED];
+    pieces = ~pinnedPieces & board[BB::Type::BISHOP] &
+             board[BB::Type::ALL_BLACK] & board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.Next()) {
       move.from = iterator.GetCurrentSquare();
@@ -2555,22 +2772,60 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
     pieces = ~pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_BLACK] & board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayDiagLeft);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        Bitboard horse(static_cast<Square>(move.from));
-        moves = (((LookUpTables::getDiagRightAttacks(
-                       static_cast<Square>(move.from), occupied) |
-                   LookUpTables::getDiagLeftAttacks(
-                       static_cast<Square>(move.from), occupied)) &
-                  (kingRayDiagLeft | kingRayDiagRight)) |
-                 ((moveN(horse) | moveE(horse)) & kingRayFile) |
-                 ((moveS(horse) | moveW(horse)) & kingRayRank)) &
-                pinningPieces;
+        moves = LookUpTables::getDiagLeftAttacks(static_cast<Square>(move.from),
+                                                 occupied) &
+                validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
         while (movesIterator.Next()) {
           move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        moves = LookUpTables::getDiagRightAttacks(
+                    static_cast<Square>(move.from), occupied) &
+                validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayFile);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        Bitboard horse(static_cast<Square>(move.from));
+        moves = (moveN(horse) | moveS(horse)) & validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayRank);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        Bitboard horse(static_cast<Square>(move.from));
+        moves = (moveE(horse) | moveW(horse)) & validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
           movesArray[moveNumber] = move;
           moveNumber++;
         }
@@ -2580,8 +2835,8 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
 
   // Dragon moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
-             board[BB::Type::PROMOTED];
+    pieces = ~pinnedPieces & board[BB::Type::ROOK] &
+             board[BB::Type::ALL_BLACK] & board[BB::Type::PROMOTED];
     iterator.Init(pieces);
     while (iterator.Next()) {
       move.from = iterator.GetCurrentSquare();
@@ -2605,22 +2860,60 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
     pieces = pinnedPieces & board[BB::Type::ROOK] & board[BB::Type::ALL_BLACK] &
              board[BB::Type::PROMOTED];
     if (pieces) {
-      iterator.Init(pieces);
+      iterator.Init(pieces & kingRayFile);
       while (iterator.Next()) {
         move.from = iterator.GetCurrentSquare();
-        Bitboard dragon(static_cast<Square>(move.from));
-        moves = (((LookUpTables::getRankAttacks(static_cast<Square>(move.from),
-                                                occupied) |
-                   LookUpTables::getFileAttacks(static_cast<Square>(move.from),
-                                                occupied)) &
-                  (kingRayRank | kingRayFile)) |
-                 ((moveNW(dragon) | moveSE(dragon)) & kingRayDiagLeft) |
-                 ((moveNE(dragon) | moveSW(dragon)) & kingRayDiagRight)) &
-                pinningPieces;
+        moves = LookUpTables::getFileAttacks(static_cast<Square>(move.from),
+                                             occupied) &
+                validMoves;
         ourAttacks |= moves;
         movesIterator.Init(moves);
         while (movesIterator.Next()) {
           move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayRank);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        moves = LookUpTables::getRankAttacks(static_cast<Square>(move.from),
+                                             occupied) &
+                validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayDiagRight);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        Bitboard dragon(static_cast<Square>(move.from));
+        moves = (moveNE(dragon) | moveSW(dragon)) & validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
+          movesArray[moveNumber] = move;
+          moveNumber++;
+        }
+      }
+      iterator.Init(pieces & kingRayDiagLeft);
+      while (iterator.Next()) {
+        move.from = iterator.GetCurrentSquare();
+        Bitboard dragon(static_cast<Square>(move.from));
+        moves = (moveNW(dragon) | moveSE(dragon)) & validMoves;
+        ourAttacks |= moves;
+        movesIterator.Init(moves);
+        while (movesIterator.Next()) {
+          move.to = movesIterator.GetCurrentSquare();
+          move.promotion = 0;
           movesArray[moveNumber] = move;
           moveNumber++;
         }
