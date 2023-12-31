@@ -27,7 +27,7 @@ set(dllFiles
     engine/shogi_engine2.cpp
 )
 
-add_library(shogi_engine_core STATIC
+add_library(shogi_engine_core SHARED
     ${headerFiles} ${sourceFiles}
 )
 target_include_directories(shogi_engine_core PUBLIC include)
