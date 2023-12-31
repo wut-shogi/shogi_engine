@@ -13,10 +13,7 @@ void test() {
   Board startingBoard = Boards::STARTING_BOARD();
   print_Board(startingBoard);
   bool isWhite = false;
-  Board board = Board::FromSFEN(
-      "ln1g3nl/4ks1+R1/p2pppp2/8p/B1s6/2P3P1P/P2PPPS2/3+p1K3/L+r3G1NL b "
-      "BG2Pgsn2p 1",
-      isWhite);
+  Board board = startingBoard;
 
   /*Board board;
   board[BB::Type::PAWN] = {0, 133955584, 133955584};
@@ -34,25 +31,50 @@ void test() {
 
   std::vector<Move> movesFromRoot;
   SEARCH::init();
-  auto start = std::chrono::high_resolution_clock::now();
-  Move bestMove = SEARCH::GetBestMove2(board, isWhite, 4);
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  std::cout << "Time: " << duration.count() << " ms" << std::endl;
-  std::cout << moveToUSI(bestMove) << std::endl;
-   //CPU::perft<true, true>(startingBoard, 6, movesFromRoot, false);
-  //Move bestMove = SEARCH::GetBestMove(startingBoard, isWhite, 5);
-   start = std::chrono::high_resolution_clock::now();
+  /* auto start = std::chrono::high_resolution_clock::now();
+   Move bestMove = SEARCH::GetBestMove2(board, isWhite, 4);
+   auto stop = std::chrono::high_resolution_clock::now();
+   auto duration =
+       std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+   std::cout << "Time: " << duration.count() << " ms" << std::endl;
+   std::cout << moveToUSI(bestMove) << std::endl;*/
+  Move move;
+  move.from = G5;
+  move.to = F5;
+  move.promotion = 0;
+  makeMove(board, move);
+  move.from = C5;
+  move.to = D5;
+  move.promotion = 0;
+  makeMove(board, move);
+  move.from = F5;
+  move.to = E5;
+  move.promotion = 0;
+  makeMove(board, move);
+  move.from = D5;
+  move.to = E5;
+  move.promotion = 0;
+  makeMove(board, move);
+  move.from = H2;
+  move.to = H5;
+  move.promotion = 0;
+  makeMove(board, move);
+
+  //CPU::MoveList moves(board, true);
+
+  print_Board(board);
+  CPU::perft<true, true>(board, 1, movesFromRoot, true);
+  // Move bestMove = SEARCH::GetBestMove(startingBoard, isWhite, 5);
+  /* start = std::chrono::high_resolution_clock::now();
   Move bestMoveCPU = SEARCH::GetBestMoveAlphaBeta(board, isWhite, 4);
    stop = std::chrono::high_resolution_clock::now();
    duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
   std::cout << "Time: " << duration.count() << " ms" << std::endl;
-  std::cout << moveToUSI(bestMoveCPU) << std::endl;
+  std::cout << moveToUSI(bestMoveCPU) << std::endl;*/
   // search::cleanup();
-  //GameSimulator simulator({SEARCH::GetBestMoveAlphaBeta, SEARCH::GetBestMove});
-  //simulator.Run();
+  // GameSimulator simulator({SEARCH::GetBestMoveAlphaBeta,
+  // SEARCH::GetBestMove}); simulator.Run();
   std::cout << "Done!" << std::endl;
 }
 

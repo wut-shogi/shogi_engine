@@ -45,6 +45,15 @@ __host__ uint64_t perft(Board& board,
   MoveList moves = MoveList(board, isWhite);
   std::vector<uint64_t> counts;
   if (depth == 1) {
+    if constexpr (Root) {
+      for (int i = 0; i < moves.size(); i++) {
+        if constexpr (Verbose)
+          std::cout << moveToUSI(*(moves.data() + i)) << ": " << 1
+                    << std::endl;
+      }
+      if constexpr (Verbose)
+        std::cout << "Nodes searched: " << moves.size() << std::endl;
+    }
     return moves.size();
   }
   Board oldBoard = board;
