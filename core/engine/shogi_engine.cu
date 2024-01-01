@@ -6,9 +6,11 @@ static bool afterInit = false;
 static std::string getBestMoveUSI(const shogi::engine::Board& board,
                                   bool isWhite,
                                   unsigned int maxDepth,
-                                  unsigned int maxTime = 0) {
-  shogi::engine::Move bestMove =
-      shogi::engine::SEARCH::GetBestMove(board, isWhite, 0, maxDepth);
+                                  unsigned int maxTime = 0,
+                                  bool useGPU = true) {
+  shogi::engine::Move bestMove = shogi::engine::SEARCH::GetBestMove(
+      board, isWhite, maxDepth, maxTime,
+      useGPU ? shogi::engine::SEARCH::GPU : shogi::engine::SEARCH::CPU);
   return shogi::engine::moveToUSI(bestMove);
 }
 
@@ -24,7 +26,7 @@ void cleanup() {
   afterInit = false;
 }
 
-BSTR getAllLegalMoves(const char* SFENstring) {
+int getAllLegalMoves(const char* SFENstring, char* output) {
   bool isWhite;
   shogi::engine::Board board =
       shogi::engine::Board::FromSFEN(SFENstring, isWhite);
@@ -34,21 +36,27 @@ BSTR getAllLegalMoves(const char* SFENstring) {
     for (const auto& move : moves) {
       movesString += shogi::engine::moveToUSI(move) + '|';
     }
-    movesString.pop_back();
+    if (!movesString.empty())
+      movesString.pop_back();
+
+    strcpy(output, movesString.data());
   }
-  std::wstring movesWstring(movesString.begin(), movesString.end());
-  return SysAllocString(movesWstring.c_str());
+  return movesString.size();
 }
 
-BSTR getBestMove(const char* SFENstring,
-                 unsigned int maxDepth,
-                 unsigned int maxTime) {
+int getBestMove(const char* SFENstring,
+                unsigned int maxDepth,
+                unsigned int maxTime,
+                bool useGPU,
+                char* output) {
   bool isWhite;
   shogi::engine::Board board =
       shogi::engine::Board::FromSFEN(SFENstring, isWhite);
   std::string bestMoveString = "";
-  if (afterInit)
-    bestMoveString = getBestMoveUSI(board, isWhite, maxDepth);
-  std::wstring bestMoveWstring(bestMoveString.begin(), bestMoveString.end());
-  return SysAllocString(bestMoveWstring.c_str());
+  if (afterInit) {
+    bestMoveString = getBestMoveUSI(board, isWhite, maxDepth, maxTime, useGPU);
+
+    strcpy(output, bestMoveString.data());
+  }
+  return bestMoveString.size();
 }

@@ -16,75 +16,11 @@ void test() {
   bool isWhite = false;
 
   Board board = startingBoard;
-  /*board[BB::Type::PAWN] = {506, 262208, 117178368};
-  board[BB::Type::LANCE] = {67371008, 0, 257};
-  board[BB::Type::KNIGHT] = {34078720, 0, 130};
-  board[BB::Type::SILVER_GENERAL] = {16781312, 0, 68};
-  board[BB::Type::GOLD_GENERAL] = {10485760, 0, 40};
-  board[BB::Type::BISHOP] = {1028, 0, 0};
-  board[BB::Type::ROOK] = {65536, 0, 1024};
-  board[BB::Type::KING] = {4194304, 0, 4096};
-  board[BB::Type::PROMOTED] = {0, 0, 0};
-  board[BB::Type::ALL_WHITE] = {132978170, 262144, 0};
-  board[BB::Type::ALL_BLACK] = {4, 64, 117183983};
-  board.inHand.value = 268435456;*/
-  //print_Board(board);
- // std::cout << boardToSFEN(board);
-  //CPU::MoveList moves(board, true);
-  /* auto start = std::chrono::high_resolution_clock::now();
-   Move bestMove = SEARCH::GetBestMove2(board, isWhite, 4);
-   auto stop = std::chrono::high_resolution_clock::now();
-   auto duration =
-       std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-   std::cout << "Time: " << duration.count() << " ms" << std::endl;
-   std::cout << moveToUSI(bestMove) << std::endl;*/
-  /*Move move;
-  move.from = G7;
-  move.to = F7;
-  move.promotion = 0;
-  makeMove(board, move);*/
-  /* move.from = C3;
-  move.to = D3;
-  move.promotion = 0;
-  makeMove(board, move);
-  move.from = H8;
-  move.to = D4;
-  move.promotion = 0;
-  makeMove(board, move);
-  move.from =B2;
-  move.to = C3;
-  move.promotion = 0;
-  makeMove(board, move);
-  move.from = D4;
-  move.to = C5;
-  move.promotion = 1;
-  makeMove(board, move);
-  move.from = C3;
-  move.to = E1;
-  move.promotion = 0;
-  makeMove(board, move);*/
   print_Board(board);
-
-  //CPU::MoveList moves(board, true);
-  /*board = Board::FromSFEN(
-      "1nskG3l/lpng1+B1g1/pPp1pP3/5+rp1p/2PP3p1/4S1P1P/2N2p3/K3L2+s1/1r+b1P3L w Pgsn2p 4",
-      isWhite);
-  CPU::MoveList moves(board, isWhite);*/
-  //SEARCH::perftCPU<true>(board, 1, false);
-  print_Board(board);
-  SEARCH::perftGPU<true>(board, 7, true);
-  //Move bestMove1 = SEARCH::GetBestMoveAlphaBeta(board, false, 6);
-  //Move bestMove = SEARCH::GetBestMove2(board, false, 6);
-  /* start = std::chrono::high_resolution_clock::now();
-  Move bestMoveCPU = SEARCH::GetBestMoveAlphaBeta(board, isWhite, 4);
-   stop = std::chrono::high_resolution_clock::now();
-   duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  std::cout << "Time: " << duration.count() << " ms" << std::endl;
-  std::cout << moveToUSI(bestMoveCPU) << std::endl;*/
-  // search::cleanup();
-  // GameSimulator simulator({SEARCH::GetBestMoveAlphaBeta,
-  // SEARCH::GetBestMove}); simulator.Run();
+  Move bestMoveCPU = SEARCH::GetBestMove(board, false, 6, 0, SEARCH::CPU);
+  std::cout << moveToUSI(bestMoveCPU) << std::endl;
+  Move bestMoveGPU = SEARCH::GetBestMove(board, false, 6, 0, SEARCH::GPU);
+  std::cout << moveToUSI(bestMoveGPU) << std::endl;
   std::cout << "Done!" << std::endl;
 }
 

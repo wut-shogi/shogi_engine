@@ -7,10 +7,11 @@ extern "C" SHOGILIBRARY_API bool init();
 
 extern "C" SHOGILIBRARY_API void cleanup();
 
-extern "C" SHOGILIBRARY_API BSTR
-getAllLegalMoves(const char* SFENstring);
+extern "C" SHOGILIBRARY_API int getAllLegalMoves(const char* SFENstring,
+                                                 char* output);
 
-extern "C" SHOGILIBRARY_API BSTR getBestMove(
-    const char* SFENstring,
-    unsigned int maxDepth,
-    unsigned int maxTime);
+extern "C" SHOGILIBRARY_API int getBestMove(const char* SFENstring,
+                                            unsigned int maxDepth,
+                                            unsigned int maxTime,
+                                            bool useGPU,
+                                            char* output);

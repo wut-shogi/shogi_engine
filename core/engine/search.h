@@ -7,22 +7,17 @@ namespace shogi {
 namespace engine {
 namespace SEARCH {
 
+enum SearchType { CPU, GPU };
+
 bool init();
 
 void cleanup();
 
-Move GetBestMove(const Board& board, bool isWhite, uint16_t maxDepth);
-
-Move GetBestMoveAlphaBeta(const Board& board, bool isWhite, uint16_t maxDepth);
-
-int16_t alphaBeta(Board& board,
-                  bool isWhite,
-                  uint16_t depth,
-                  int16_t alpha,
-                  int16_t beta,
-                  std::vector<uint32_t>& nodesSearched);
-
-Move GetBestMove2(const Board& board, bool isWhite, uint16_t maxDepth);
+Move GetBestMove(const Board& board,
+                 bool isWhite,
+                 uint16_t maxDepth,
+                 uint32_t maxTime,
+                 SearchType searchType);
 
 uint64_t countMovesCPU(Board& board, uint16_t depth, bool isWhite);
 
@@ -46,11 +41,9 @@ __host__ uint64_t perftCPU(const Board& board,
   for (const auto& move : moves) {
     MoveInfo moveReturnInfo = makeMove<true>(tmpBoard, move);
     count = countMovesCPU(tmpBoard, depth - 1, !isWhite);
-    // unmakeMove(board, move, moveReturnInfo);
     tmpBoard = board;
     if constexpr (Verbose)
-      std::cout << moveToUSI(move) << ": " << count
-                << std::endl;
+      std::cout << moveToUSI(move) << ": " << count << std::endl;
     moveCount += count;
   }
   if constexpr (Verbose)
@@ -87,9 +80,7 @@ uint64_t countMovesGPU(Move* moves,
                        GPUBuffer& gpuBuffer);
 
 template <bool Verbose = false>
-__host__ uint64_t perftGPU(Board& board,
-                           uint16_t depth,
-                           bool isWhite = false) {
+__host__ uint64_t perftGPU(Board& board, uint16_t depth, bool isWhite = false) {
   GPUBuffer gpuBuffer(board);
   CPU::MoveList moves(board, isWhite);
   uint64_t nodesSearched = 0;
