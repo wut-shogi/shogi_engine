@@ -8,37 +8,8 @@ namespace engine {
 namespace GPU {
 int prefixSum(uint32_t* inValues, uint32_t inValuesLength);
 
-int countWhiteMoves(uint32_t size,
-                    int16_t movesPerBoard,
-                    Board* startBoard,
-                    Move* inMoves,
-                    uint32_t* outOffsets,
-                    uint32_t* outBitboards);
-
-int countBlackMoves(uint32_t size,
-                    int16_t movesPerBoard,
-                    Board* startBoard,
-                    Move* inMoves,
-                    uint32_t* outOffsets,
-                    uint32_t* outBitboards);
-
-int generateWhiteMoves(uint32_t size,
-                       int16_t movesPerBoard,
-                       Board* startBoard,
-                       Move* inMoves,
-                       uint32_t* inOffsets,
-                       uint32_t* inBitboards,
-                       Move* outMoves);
-
-int generateBlackMoves(uint32_t size,
-                       int16_t movesPerBoard,
-                       Board* startBoard,
-                       Move* inMoves,
-                       uint32_t* inOffsets,
-                       uint32_t* inBitboards,
-                       Move* outMoves);
-
 int evaluateBoards(uint32_t size,
+                   bool isWhite,
                    int16_t movesPerBoard,
                    Board* startBoard,
                    Move* inMoves,

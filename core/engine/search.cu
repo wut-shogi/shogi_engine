@@ -72,7 +72,7 @@ int16_t alphaBeta(Board& board,
     return isWhite ? INT16_MIN : INT16_MAX;
   }
   if (depth == 0) {
-    return evaluate(board);
+    return evaluate(board, isWhite);
   }
   Board oldBoard = board;
   int16_t result = 0;
@@ -219,7 +219,7 @@ void minMaxGPU(Move* moves,
     return;
   if (depth == maxDepth) {
     // Evaluate moves
-    GPU::evaluateBoards(size, depth, gpuBuffer.GetStartBoardPtr(), moves,
+    GPU::evaluateBoards(size, isWhite, depth, gpuBuffer.GetStartBoardPtr(), moves,
                         (int16_t*)moves);
     numberOfMovesPerDepth[depth - 1] += size;
     return;
@@ -325,7 +325,6 @@ uint64_t countMovesGPU(Move* moves,
   uint32_t processed = 0;
   uint32_t* offsets;
   uint32_t* bitboards;
-  uint32_t* bestIndex;
   uint64_t numberOfMoves = 0;
   if (size == 0)
     size = 1;

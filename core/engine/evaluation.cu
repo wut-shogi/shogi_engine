@@ -2,7 +2,7 @@
 
 namespace shogi {
 namespace engine {
-__host__ __device__ int16_t evaluate(const Board& board) {
+__host__ __device__ int16_t evaluate(const Board& board, bool isWhite) {
   int16_t whitePoints = 0, blackPoints = 0;
   Bitboard pieces;
   // White
@@ -91,6 +91,9 @@ __host__ __device__ int16_t evaluate(const Board& board) {
                  PieceValue::PROMOTED_ROOK;
   whitePoints += board.inHand.pieceNumber.WhiteRook * PieceValue::IN_HAND_ROOK;
 
+  pieces = board[BB::Type::ALL_WHITE];
+  whitePoints += pieces[MID] * 10 + pieces[BOTTOM] * 20;
+
   // Black
   // Pawns
   pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
@@ -177,7 +180,11 @@ __host__ __device__ int16_t evaluate(const Board& board) {
                  PieceValue::PROMOTED_ROOK;
   blackPoints += board.inHand.pieceNumber.BlackRook * PieceValue::IN_HAND_ROOK;
 
-  return whitePoints - blackPoints;
+  pieces = board[BB::Type::ALL_BLACK];
+  whitePoints += pieces[MID] * 10 + pieces[TOP] * 20;
+
+  int16_t score = whitePoints - blackPoints;
+  return score;
 }
 }  // namespace engine
 }  // namespace shogi

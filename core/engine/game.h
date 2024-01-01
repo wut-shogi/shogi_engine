@@ -10,10 +10,8 @@ namespace engine {
 
 class GameSimulator {
  public:
-  GameSimulator(
-      std::vector<Move (*)(const Board&, bool, uint16_t)> getBestMoveFuncs)
-      : getBestMoveFuncs(getBestMoveFuncs) {
-  }
+  GameSimulator(uint16_t maxDepth, uint16_t maxTime, SEARCH::SearchType type)
+      : type(type), maxDepth(maxDepth), maxTime(maxTime) {}
   void Run() {
     bool result = SEARCH::init();
     if (!result) {
@@ -27,16 +25,13 @@ class GameSimulator {
       if (command == "q") {
         break;
       } else if (command == "n") {
-        Move bestMove;
-        for (int i = 0; i < getBestMoveFuncs.size(); i++) {
-          auto start = std::chrono::high_resolution_clock::now();
-          bestMove = getBestMoveFuncs[i](board, isWhite, 5);
-          auto stop = std::chrono::high_resolution_clock::now();
-          auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-              stop - start);
-          std::cout << "Time: " << duration.count() << " ms" << std::endl;
-          printf("(%d) best Move: %s\n", i, moveToUSI(bestMove));
-        }
+        auto start = std::chrono::high_resolution_clock::now();
+        Move bestMove = SEARCH::GetBestMove(board, isWhite, maxDepth, maxTime, type);
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration =
+            std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+        /*std::cout << "Time: " << duration.count() << " ms" << std::endl;
+        printf("Best Move: %s\n", moveToUSI(bestMove));*/
         makeMove(board, bestMove);
         print_Board(board);
         isWhite = !isWhite;
@@ -49,8 +44,9 @@ class GameSimulator {
   bool isWhite;
   uint8_t* d_Buffer;
   uint32_t d_BufferSize;
-  std::vector<Move (*)(const Board&, bool, uint16_t)> getBestMoveFuncs;
-  std::vector<Move> bestMoves;
+  SEARCH::SearchType type;
+  uint16_t maxDepth;
+  uint16_t maxTime;
 };
 
 }  // namespace engine

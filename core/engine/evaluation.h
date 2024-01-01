@@ -3,6 +3,6 @@
 
 namespace shogi {
 namespace engine {
-__host__ __device__ int16_t evaluate(const Board& board);
+__host__ __device__ int16_t evaluate(const Board& board, bool isWhite);
 }
 }  // namespace shogi
