@@ -42,30 +42,37 @@ void test() {
   move.from = G7;
   move.to = F7;
   move.promotion = 0;
-  makeMove(board, move);
-   move.from = C1;
-  move.to = D1;
+  makeMove(board, move);*/
+  /* move.from = C3;
+  move.to = D3;
   move.promotion = 0;
   makeMove(board, move);
   move.from = H8;
-  move.to = E5;
+  move.to = D4;
   move.promotion = 0;
   makeMove(board, move);
-  move.from = A6;
-  move.to = B6;
+  move.from =B2;
+  move.to = C3;
   move.promotion = 0;
   makeMove(board, move);
-  move.from = E5;
-  move.to = C7;
+  move.from = D4;
+  move.to = C5;
+  move.promotion = 1;
+  makeMove(board, move);
+  move.from = C3;
+  move.to = E1;
   move.promotion = 0;
   makeMove(board, move);*/
+  print_Board(board);
 
   //CPU::MoveList moves(board, true);
-
+  /*board = Board::FromSFEN(
+      "1nskG3l/lpng1+B1g1/pPp1pP3/5+rp1p/2PP3p1/4S1P1P/2N2p3/K3L2+s1/1r+b1P3L w Pgsn2p 4",
+      isWhite);
+  CPU::MoveList moves(board, isWhite);*/
+  //SEARCH::perftCPU<true>(board, 1, false);
   print_Board(board);
-  std::cout << boardToSFEN(board) << std::endl;
-  SEARCH::perftCPU<true>(board, 6, false);
-  SEARCH::perftGPU<true>(board, 6, false);
+  SEARCH::perftGPU<true>(board, 7, true);
   //Move bestMove1 = SEARCH::GetBestMoveAlphaBeta(board, false, 6);
   //Move bestMove = SEARCH::GetBestMove2(board, false, 6);
   /* start = std::chrono::high_resolution_clock::now();

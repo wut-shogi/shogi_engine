@@ -1041,7 +1041,7 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
 
   // Pawn moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::PAWN] &
+    pieces = board[BB::Type::PAWN] &
              board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
     moves = moveN((pieces & ~pinnedPieces) |
                   (pieces & pinnedPieces & kingRayFile)) &
@@ -1300,7 +1300,7 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
                         popcount(moves[BOTTOM]));
     }
 
-    pieces = ~pinnedPieces & board[BB::Type::BISHOP] &
+    pieces = pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_BLACK] & board[BB::Type::PROMOTED];
     if (pieces) {
       iterator.Init(pieces & kingRayDiagLeft);
@@ -2268,7 +2268,7 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
 
   // Pawn moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::PAWN] &
+    pieces = board[BB::Type::PAWN] &
              board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
     moves = moveN((pieces & ~pinnedPieces) |
                   (pieces & pinnedPieces & kingRayFile)) &
@@ -2729,7 +2729,7 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
       }
     }
 
-    pieces = ~pinnedPieces & board[BB::Type::BISHOP] &
+    pieces = pinnedPieces & board[BB::Type::BISHOP] &
              board[BB::Type::ALL_BLACK] & board[BB::Type::PROMOTED];
     if (pieces) {
       iterator.Init(pieces & kingRayDiagLeft);

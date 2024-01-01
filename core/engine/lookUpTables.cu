@@ -416,7 +416,7 @@ __host__ __device__ uint32_t getDiagRightBlockPattern(const Bitboard& occupied,
   };
   uint32_t startingSquare = startSqDiagRight[square];
 #endif
-  int len = startingSquare > 9 ? 7 - startingSquare / 9 : startingSquare - 1;
+  int len = startingSquare >= 9 ? 7 - startingSquare / 9 : startingSquare - 1;
   for (int i = 0; i < len; i++) {
     result += occupied.GetBit(static_cast<Square>(startingSquare + i * SW + SW))
               << i;
@@ -444,7 +444,7 @@ __host__ __device__ uint32_t getDiagLeftBlockPattern(const Bitboard& occupied,
   uint32_t startingSquare = startSqDiagLeft[square];
 #endif
   int len =
-      startingSquare > 9 ? 7 - startingSquare / 9 : 7 - startingSquare % 9;
+      startingSquare >= 9 ? 7 - startingSquare / 9 : 7 - startingSquare % 9;
   for (int i = 0; i < len; i++) {
     result += occupied.GetBit(static_cast<Square>(startingSquare + i * SE + SE))
               << i;
