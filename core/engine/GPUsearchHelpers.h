@@ -96,6 +96,14 @@ int generateBlackMoves(uint32_t size,
                        uint32_t* inBitboards,
                        Move* outMoves);
 
+template <bool Root, bool Verbose = false>
+__host__ uint64_t perft(Board& board,
+                        uint16_t depth,
+                        std::vector<Move>& movesFromRoot,
+                        bool isWhite = false) {
+  
+}
+
 }  // namespace GPU
 }  // namespace engine
 }  // namespace shogi

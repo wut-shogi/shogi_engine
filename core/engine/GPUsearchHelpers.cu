@@ -495,7 +495,7 @@ __global__ void generateWhiteMovesKernel(uint32_t size,
   if (numberOfGeneratedMoves != numberOfMoves) {
     printf(
         "generateWhiteMovesKernel Error: generated different number of moves "
-        "then precounted");
+        "then precounted. Expected %d moves, generated %d moves\n", numberOfMoves, numberOfGeneratedMoves);
   }
 }
 

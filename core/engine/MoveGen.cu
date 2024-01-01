@@ -577,15 +577,11 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
 
   // Pawn moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::PAWN] &
+    pieces = board[BB::Type::PAWN] &
              board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-    moves = moveS(pieces) & validMoves;
-    if (pinnedPieces & board[BB::Type::PAWN]) {
-      pieces = pinnedPieces & board[BB::Type::PAWN] &
-               board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED] &
-               kingRayFile;
-      moves |= moveS(pieces) & validMoves;
-    }
+    moves = moveS((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
                      popcount(moves[BOTTOM] & ~BOTTOM_RANK) * 2 +  // promotions
@@ -610,104 +606,89 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
 
   // SilverGenerals moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::SILVER_GENERAL] &
+    pieces = board[BB::Type::SILVER_GENERAL] &
              board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-    moves = moveS(pieces) & validMoves;
+    moves = moveS((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
                      popcount(moves[BOTTOM]) * 2;  // promotions
-    moves = moveSE(pieces) & validMoves;
+    moves = moveSE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
                      popcount(moves[BOTTOM]) * 2;  // promotions
-    moves = moveSW(pieces) & validMoves;
+    moves = moveSW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) + popcount(moves[MID]) +
                      popcount(moves[BOTTOM]) * 2;  // promotions
-    moves = moveNE(pieces) & validMoves;
+    moves = moveNE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) +
                      popcount(moves[MID] & BOTTOM_RANK) *
                          2 +  // promotion when starting from promotion zone
                      popcount(moves[MID] & ~BOTTOM_RANK) +
                      popcount(moves[BOTTOM]) * 2;  // promotions
-    moves = moveNW(pieces) & validMoves;
+    moves = moveNW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) +
                      popcount(moves[MID] & BOTTOM_RANK) *
                          2 +  // promotion when starting from promotion zone
                      popcount(moves[MID] & ~BOTTOM_RANK) +
                      popcount(moves[BOTTOM]) * 2;  // promotions
-
-    pieces = pinnedPieces & board[BB::Type::SILVER_GENERAL] &
-             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
-    if (pieces) {
-      moves = {0, 0, 0};
-      moves |= moveS(pieces & kingRayFile);
-      moves |=
-          moveNW(pieces & kingRayDiagLeft) | moveSE(pieces & kingRayDiagLeft);
-      moves |=
-          moveNE(pieces & kingRayDiagRight) | moveSW(pieces & kingRayDiagRight);
-      moves &= validMoves;
-      ourAttacks |= moves;
-      numberOfMoves += popcount(moves[TOP]) +
-                       popcount(moves[MID] & BOTTOM_RANK) *
-                           2 +  // promotion when starting from promotion zone
-                       popcount(moves[MID] & ~BOTTOM_RANK) +
-                       popcount(moves[BOTTOM]) * 2;  // promotions
-    }
   }
 
   // GoldGenerals moves
   {
-    pieces = ~pinnedPieces &
-             (board[BB::Type::GOLD_GENERAL] |
+    pieces = (board[BB::Type::GOLD_GENERAL] |
               ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                 board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                board[BB::Type::PROMOTED])) &
              board[BB::Type::ALL_WHITE];
-    moves = moveS(pieces) & validMoves;
+    moves = moveS((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveSE(pieces) & validMoves;
+    moves = moveSE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveSW(pieces) & validMoves;
+    moves = moveSW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveE(pieces) & validMoves;
+    moves = moveE((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayRank)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveW(pieces) & validMoves;
+    moves = moveW((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayRank)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveN(pieces) & validMoves;
+    moves = moveN((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-
-    pieces = pinnedPieces &
-             (board[BB::Type::GOLD_GENERAL] |
-              ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
-                board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
-               board[BB::Type::PROMOTED])) &
-             board[BB::Type::ALL_WHITE];
-    if (pieces) {
-      moves = {0, 0, 0};
-      moves |= moveN(pieces & kingRayFile) | moveS(pieces & kingRayFile);
-      moves |= moveSE(pieces & kingRayDiagLeft);
-      moves |= moveSW(pieces & kingRayDiagRight);
-      moves |= moveE(pieces & kingRayRank) | moveW(pieces & kingRayRank);
-      moves &= validMoves;
-      ourAttacks |= moves;
-      numberOfMoves +=
-          popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    }
   }
 
   // Lance moves
@@ -1062,13 +1043,9 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
   {
     pieces = ~pinnedPieces & board[BB::Type::PAWN] &
              board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-    moves = moveN(pieces) & validMoves;
-    if (pinnedPieces & board[BB::Type::PAWN]) {
-      pieces = ~pinnedPieces & board[BB::Type::PAWN] &
-               board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED] &
-               kingRayFile;
-      moves |= moveN(pieces) & validMoves;
-    }
+    moves = moveN((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP] & TOP_RANK) +  // forced promotions
                      popcount(moves[TOP] & ~TOP_RANK) * 2 +  // promotions
@@ -1093,104 +1070,89 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
 
   // SilverGenerals moves
   {
-    pieces = ~pinnedPieces & board[BB::Type::SILVER_GENERAL] &
+    pieces = board[BB::Type::SILVER_GENERAL] &
              board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-    moves = moveN(pieces) & validMoves;
+    moves = moveN((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) * 2 +  // promotions
                      popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveNE(pieces) & validMoves;
+    moves = moveNE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) * 2 +  // promotions
                      popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveNW(pieces) & validMoves;
+    moves = moveNW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) * 2 +  // promotions
                      popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveSE(pieces) & validMoves;
+    moves = moveSE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) * 2 +  // promotions
                      popcount(moves[MID] & TOP_RANK) *
                          2 +  // promotion when starting from promotion zone
                      popcount(moves[MID] & ~TOP_RANK) +
                      popcount(moves[BOTTOM]);
-    moves = moveSW(pieces) & validMoves;
+    moves = moveSW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves += popcount(moves[TOP]) * 2 +  // promotions
                      popcount(moves[MID] & TOP_RANK) *
                          2 +  // promotion when starting from promotion zone
                      popcount(moves[MID] & ~TOP_RANK) +
                      popcount(moves[BOTTOM]);
-
-    pieces = pinnedPieces & board[BB::Type::SILVER_GENERAL] &
-             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
-    if (pieces) {
-      moves = {0, 0, 0};
-      moves |= moveN(pieces & kingRayFile);
-      moves |=
-          moveNW(pieces & kingRayDiagLeft) | moveSE(pieces & kingRayDiagLeft);
-      moves |=
-          moveNE(pieces & kingRayDiagRight) | moveSW(pieces & kingRayDiagRight);
-      moves &= validMoves;
-      ourAttacks |= moves;
-      numberOfMoves += popcount(moves[TOP]) * 2 +  // promotions
-                       popcount(moves[MID] & TOP_RANK) *
-                           2 +  // promotion when starting from promotion zone
-                       popcount(moves[MID] & ~TOP_RANK) +
-                       popcount(moves[BOTTOM]);
-    }
   }
 
   // GoldGenerals moves
   {
-    pieces = ~pinnedPieces &
-             (board[BB::Type::GOLD_GENERAL] |
+    pieces = (board[BB::Type::GOLD_GENERAL] |
               ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
                 board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
                board[BB::Type::PROMOTED])) &
              board[BB::Type::ALL_BLACK];
-    moves = moveN(pieces) & validMoves;
+    moves = moveN((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveNE(pieces) & validMoves;
+    moves = moveNE((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagRight)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveNW(pieces) & validMoves;
+    moves = moveNW((pieces & ~pinnedPieces) |
+                   (pieces & pinnedPieces & kingRayDiagLeft)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveE(pieces) & validMoves;
+    moves = moveE((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayRank)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveW(pieces) & validMoves;
+    moves = moveW((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayRank)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    moves = moveS(pieces) & validMoves;
+    moves = moveS((pieces & ~pinnedPieces) |
+                  (pieces & pinnedPieces & kingRayFile)) &
+            validMoves;
     ourAttacks |= moves;
     numberOfMoves +=
         popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-
-    pieces = pinnedPieces &
-             (board[BB::Type::GOLD_GENERAL] |
-              ((board[BB::Type::PAWN] | board[BB::Type::LANCE] |
-                board[BB::Type::KNIGHT] | board[BB::Type::SILVER_GENERAL]) &
-               board[BB::Type::PROMOTED])) &
-             board[BB::Type::ALL_BLACK];
-    if (pieces) {
-      moves = {0, 0, 0};
-      moves |= moveN(pieces & kingRayFile) | moveS(pieces & kingRayFile);
-      moves |= moveE(pieces & kingRayRank) | moveW(pieces & kingRayRank);
-      moves |= moveNE(pieces & kingRayDiagRight);
-      moves |= moveNW(pieces & kingRayDiagLeft);
-      moves &= validMoves;
-      ourAttacks |= moves;
-      numberOfMoves +=
-          popcount(moves[TOP]) + popcount(moves[MID]) + popcount(moves[BOTTOM]);
-    }
   }
 
   // Lance moves
@@ -1535,8 +1497,6 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
       }
 
       if (pinnedPieces) {
-        iterator.Init(pieces);
-        iterator.Next();
         Square kingSquare = static_cast<Square>(move.from);
         Bitboard empty = {0, 0, 0};
         kingRayRank = LookUpTables::getRankAttacks(kingSquare, empty);
@@ -1760,7 +1720,7 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
       moveNumber++;
     }
     moves = moveE((pieces & ~pinnedPieces) |
-                  (pieces & pinnedPieces & kingRayDiagRight)) &
+                  (pieces & pinnedPieces & kingRayRank)) &
             validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
@@ -1772,7 +1732,7 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
       moveNumber++;
     }
     moves = moveW((pieces & ~pinnedPieces) |
-                  (pieces & pinnedPieces & kingRayDiagRight)) &
+                  (pieces & pinnedPieces & kingRayRank)) &
             validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
@@ -2517,7 +2477,7 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
       moveNumber++;
     }
     moves = moveE((pieces & ~pinnedPieces) |
-                  (pieces & pinnedPieces & kingRayDiagRight)) &
+                  (pieces & pinnedPieces & kingRayRank)) &
             validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
@@ -2529,7 +2489,7 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
       moveNumber++;
     }
     moves = moveW((pieces & ~pinnedPieces) |
-                  (pieces & pinnedPieces & kingRayDiagRight)) &
+                  (pieces & pinnedPieces & kingRayRank)) &
             validMoves;
     ourAttacks |= moves;
     movesIterator.Init(moves);
