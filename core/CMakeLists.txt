@@ -39,7 +39,7 @@ if(NOT SHOGI_CUDA_SUPPORT)
     set_source_files_properties(${sourceFiles} PROPERTIES LANGUAGE CXX)
 endif()
 
-add_library(shogi_engine_core SHARED ${headerFiles} ${sourceFiles})
+add_library(shogi_engine_core STATIC ${headerFiles} ${sourceFiles})
 target_include_directories(shogi_engine_core PUBLIC include)
 
 if(SHOGI_CUDA_SUPPORT)

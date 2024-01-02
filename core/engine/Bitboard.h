@@ -1,6 +1,5 @@
 #pragma once
 #include <array>
-#include <bit>
 #include <bitset>
 #include <cstring>
 #include <iostream>
@@ -176,7 +175,8 @@ RUNTYPE inline uint32_t popcount(uint32_t value) {
   return __popc(value);
 #else
   // return __popcnt(value);
-  return std::popcount(value);
+  // return std::popcount(value);
+  return std::bitset<32>(value).count();
 #endif
 }
 
