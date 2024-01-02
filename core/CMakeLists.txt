@@ -40,11 +40,17 @@ if(NOT SHOGI_CUDA_SUPPORT)
 endif()
 
 add_library(shogi_engine_core SHARED ${headerFiles} ${sourceFiles})
+add_library(shogi_engine_core_static STATIC ${headerFiles} ${sourceFiles})
+
 target_include_directories(shogi_engine_core PUBLIC include)
+target_include_directories(shogi_engine_core_static PUBLIC include)
 
 if(SHOGI_CUDA_SUPPORT)
     set_target_properties(shogi_engine_core PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
     set_target_properties(shogi_engine_core PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+
+    set_target_properties(shogi_engine_core_static PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    set_target_properties(shogi_engine_core_static PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 endif()
 
 add_library(shogi_engine SHARED ${dllFiles})

@@ -7,7 +7,7 @@ add_executable(engine_tests
 
 target_link_libraries(engine_tests
     PRIVATE gtest
-    PRIVATE shogi_engine_core)
+    PRIVATE shogi_engine_core_static)
 
 target_include_directories(engine_tests PRIVATE ../core)
 # Run tests after build
