@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "engine/bitboard.h"
 #include <unordered_set>
+#include "engine/Bitboard.h"
 using namespace shogi::engine;
 
 TEST(Bitboards, DefaultConstructor) {

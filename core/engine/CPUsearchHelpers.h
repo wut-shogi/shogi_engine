@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
-#include "moveGen.h"
-#include "moveGenHelpers.h"
+#include "MoveGen.h"
+#include "MoveGenHelpers.h"
 
 namespace shogi {
 namespace engine {
@@ -36,7 +36,7 @@ class MoveList {
   Move* data() { return moves.data(); }
   uint32_t size() { return moves.size(); }
   const Move* begin() { return moves.data(); }
-  const Move* end() { return moves._Unchecked_end(); }
+  const Move* end() { return moves.data() + moves.size(); }
 
  private:
   std::vector<Move> moves;

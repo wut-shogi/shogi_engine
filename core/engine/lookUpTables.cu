@@ -1,5 +1,5 @@
 #include <array>
-#include "LookUpTables.h"
+#include "lookUpTables.h"
 
 namespace shogi {
 namespace engine {
@@ -122,7 +122,7 @@ void initDiagRightAttacks(Bitboard*& ptr) {
       int tmpColIdx = columnIdx;
       int tmpRowIdx = rowIdx;
       int idxInDiag = 0;
-      //// TODO naprawiæ chyba row z col zamienione albo coœ
+      //// TODO naprawiï¿½ chyba row z col zamienione albo coï¿½
       while (tmpColIdx > 0 && tmpRowIdx < BOARD_DIM - 1) {
         tmpRowIdx++;
         tmpColIdx--;

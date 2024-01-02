@@ -1,8 +1,8 @@
 #pragma once
 #include <chrono>
 #include <vector>
+#include "MoveGenHelpers.h"
 #include "lookUpTables.h"
-#include "moveGenHelpers.h"
 #include "search.h"
 
 namespace shogi {
@@ -26,7 +26,8 @@ class GameSimulator {
         break;
       } else if (command == "n") {
         auto start = std::chrono::high_resolution_clock::now();
-        Move bestMove = SEARCH::GetBestMove(board, isWhite, maxDepth, maxTime, type);
+        Move bestMove =
+            SEARCH::GetBestMove(board, isWhite, maxDepth, maxTime, type);
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration =
             std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);

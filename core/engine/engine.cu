@@ -1,10 +1,10 @@
 #include <iostream>
 #include "../include/engine.h"
 #include "CPUsearchHelpers.h"
-#include "lookUpTables.h"
-#include "moveGenHelpers.h"
-#include "search.h"
+#include "MoveGenHelpers.h"
 #include "game.h"
+#include "lookUpTables.h"
+#include "search.h"
 namespace shogi {
 namespace engine {
 
@@ -21,10 +21,10 @@ void test() {
   print_Board(board);
   Move bestMoveCPU = SEARCH::GetBestMove(board, false, 5, 0, SEARCH::CPU);
   std::cout << MoveToUSI(bestMoveCPU) << std::endl;
-  Move bestMoveGPU = SEARCH::GetBestMove(board, false,5, 0, SEARCH::GPU);
+  Move bestMoveGPU = SEARCH::GetBestMove(board, false, 5, 0, SEARCH::GPU);
   std::cout << MoveToUSI(bestMoveGPU) << std::endl;
   std::cout << "Done!" << std::endl;
-  //SEARCH::perftCPU<true>(startingBoard, 3, false);
+  // SEARCH::perftCPU<true>(startingBoard, 3, false);
   /*GameSimulator simulator(5, 3000, SEARCH::GPU);
   simulator.Run();*/
 }
