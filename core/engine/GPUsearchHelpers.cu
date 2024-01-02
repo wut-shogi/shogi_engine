@@ -1,14 +1,18 @@
-#include <device_launch_parameters.h>
 #include <stdio.h>
-#include <thrust/execution_policy.h>
-#include <thrust/scan.h>
 #include "GPUsearchHelpers.h"
 #include "evaluation.h"
 #include "moveGen.h"
 #include "moveGenHelpers.h"
 
+#ifdef __CUDACC__
+#include <thrust/execution_policy.h>
+#include <thrust/scan.h>
+#include <device_launch_parameters.h>
+#endif
+
 namespace shogi {
 namespace engine {
+#ifdef __CUDACC__
 
 #define THREADS_COUNT 32
 
@@ -405,5 +409,7 @@ int GPU::generateBlackMoves(uint32_t size,
 
   return 0;
 }
+
+#endif
 }  // namespace engine
 }  // namespace shogi

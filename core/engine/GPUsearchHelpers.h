@@ -1,11 +1,12 @@
 #pragma once
-#include <thrust/device_ptr.h>
 #include "Board.h"
 #include "MoveGenHelpers.h"
 
 namespace shogi {
 namespace engine {
 namespace GPU {
+#ifdef __CUDACC__
+
 int prefixSum(uint32_t* inValues, uint32_t inValuesLength);
 
 int evaluateBoards(uint32_t size,
@@ -66,14 +67,7 @@ int generateBlackMoves(uint32_t size,
                        uint32_t* inOffsets,
                        uint32_t* inBitboards,
                        Move* outMoves);
-
-template <bool Root, bool Verbose = false>
-__host__ uint64_t perft(Board& board,
-                        uint16_t depth,
-                        std::vector<Move>& movesFromRoot,
-                        bool isWhite = false) {
-  
-}
+#endif
 
 }  // namespace GPU
 }  // namespace engine

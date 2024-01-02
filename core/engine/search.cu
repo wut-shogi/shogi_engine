@@ -1,13 +1,16 @@
-#include <thrust/extrema.h>
 #include <atomic>
 #include <chrono>
 #include <future>
 #include "CPUsearchHelpers.h"
 #include "GPUsearchHelpers.h"
+#include "USIconverter.h"
 #include "evaluation.h"
 #include "lookUpTables.h"
 #include "search.h"
-#include "USIconverter.h"
+
+#ifdef __CUDACC__
+#include <thrust/extrema.h>
+#endif
 
 namespace shogi {
 namespace engine {
@@ -21,6 +24,7 @@ uint32_t d_BufferSize = 0;
 bool init() {
   try {
     LookUpTables::CPU::init();
+#ifdef __CUDACC__
     LookUpTables::GPU::init();
     size_t total = 0, free = 0;
     cudaMemGetInfo(&free, &total);
@@ -30,6 +34,7 @@ bool init() {
     cudaError_t error = cudaMalloc((void**)&d_Buffer, d_BufferSize);
     if (error != cudaSuccess)
       return false;
+#endif
   } catch (...) {
     return false;
   }
@@ -38,9 +43,11 @@ bool init() {
 
 void cleanup() {
   LookUpTables::CPU::cleanup();
+#ifdef __CUDACC__
   LookUpTables::GPU::cleanup();
   if (d_BufferSize > 0)
     cudaFree(d_Buffer);
+#endif
 }
 
 void IterativeDeepeningSearch(Move& outBestMove,
@@ -165,6 +172,7 @@ uint64_t countMovesCPU(Board& board, uint16_t depth, bool isWhite) {
   return moveCount;
 }
 
+#ifdef __CUDACC__
 GPUBuffer::GPUBuffer(const Board& startBoard) {
   d_startBoard = (Board*)d_Buffer;
   cudaMemcpy(d_startBoard, &startBoard, sizeof(Board), cudaMemcpyHostToDevice);
@@ -223,8 +231,8 @@ void minMaxGPU(Move* moves,
     return;
   if (depth == maxDepth) {
     // Evaluate moves
-    GPU::evaluateBoards(size, isWhite, depth, gpuBuffer.GetStartBoardPtr(), moves,
-                        (int16_t*)moves);
+    GPU::evaluateBoards(size, isWhite, depth, gpuBuffer.GetStartBoardPtr(),
+                        moves, (int16_t*)moves);
     numberOfMovesPerDepth[depth - 1] += size;
     return;
   }
@@ -375,6 +383,8 @@ uint64_t countMovesGPU(Move* moves,
   return numberOfMoves;
 }
 
+#endif
+
 Move GetBestMove(const Board& board,
                  bool isWhite,
                  uint16_t maxDepth,
@@ -385,10 +395,16 @@ Move GetBestMove(const Board& board,
   std::future<void> future;
   if (searchType == CPU)
     future = std::async(IterativeDeepeningSearch, std::ref(bestMove), board,
-                               isWhite, maxDepth, GetBestMoveCPU);
-  else
+                        isWhite, maxDepth, GetBestMoveCPU);
+  else {
+#ifdef __CUDACC__
     future = std::async(IterativeDeepeningSearch, std::ref(bestMove), board,
-                               isWhite, maxDepth, GetBestMoveGPU);
+                        isWhite, maxDepth, GetBestMoveGPU);
+#else
+    future = std::async(IterativeDeepeningSearch, std::ref(bestMove), board,
+                        isWhite, maxDepth, GetBestMoveCPU);
+#endif
+  }
   if (maxTime == 0)
     maxTime = UINT32_MAX;
   future.wait_for(std::chrono::milliseconds(maxTime));

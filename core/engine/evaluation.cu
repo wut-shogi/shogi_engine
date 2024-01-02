@@ -2,7 +2,7 @@
 
 namespace shogi {
 namespace engine {
-__host__ __device__ int16_t evaluate(const Board& board, bool isWhite) {
+RUNTYPE int16_t evaluate(const Board& board, bool isWhite) {
   int16_t whitePoints = 0, blackPoints = 0;
   Bitboard pieces;
   // White

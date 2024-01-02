@@ -61,7 +61,7 @@ enum PieceValue : int16_t {
   MATE = 30000
 };
 
-__host__ __device__ inline uint32_t isBitSet(uint32_t region, int bit) {
+RUNTYPE inline uint32_t isBitSet(uint32_t region, int bit) {
   return (region & (1 << bit)) >> bit;
 }
 
@@ -85,17 +85,17 @@ union InHandLayout {
   uint64_t value;
   PieceNumber pieceNumber;
 
-  __host__ __device__ InHandLayout() { value = 0; }
+  RUNTYPE InHandLayout() { value = 0; }
 };
 
 struct Bitboard {
   uint32_t bb[3];
-  __host__ __device__ Bitboard() : bb{0, 0, 0} {}
-  __host__ __device__ Bitboard(uint32_t region1,
+  RUNTYPE Bitboard() : bb{0, 0, 0} {}
+  RUNTYPE Bitboard(uint32_t region1,
                                uint32_t region2,
                                uint32_t region3)
       : bb{region1, region2, region3} {}
-  __host__ Bitboard(std::array<bool, BOARD_SIZE>& mat) {
+  Bitboard(std::array<bool, BOARD_SIZE>& mat) {
     for (int bbIdx = 0; bbIdx < REGION_DIM; bbIdx++) {
       bb[bbIdx] = 0;
       for (int i = 0; i < REGION_SIZE; i++) {
@@ -105,7 +105,7 @@ struct Bitboard {
       }
     }
   }
-  __host__ Bitboard(std::array<bool, BOARD_SIZE>&& mat) {
+  Bitboard(std::array<bool, BOARD_SIZE>&& mat) {
     for (int bbIdx = 0; bbIdx < REGION_DIM; bbIdx++) {
       bb[bbIdx] = 0;
       for (int i = 0; i < REGION_SIZE; i++) {
@@ -116,16 +116,16 @@ struct Bitboard {
     }
   }
 
-  __host__ __device__ Bitboard(const Square square) : bb{0, 0, 0} {
+  RUNTYPE Bitboard(const Square square) : bb{0, 0, 0} {
     Region region = squareToRegion(square);
     bb[region] = 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
   }
 
-  __host__ __device__ uint32_t& operator[](Region region) { return bb[region]; }
-  __host__ __device__ const uint32_t& operator[](Region region) const {
+  RUNTYPE uint32_t& operator[](Region region) { return bb[region]; }
+  RUNTYPE const uint32_t& operator[](Region region) const {
     return bb[region];
   }
-  __host__ __device__ Bitboard& operator=(const Bitboard& bb) {
+  RUNTYPE Bitboard& operator=(const Bitboard& bb) {
     Bitboard& thisBB = *this;
     thisBB[TOP] = bb[TOP];
     thisBB[MID] = bb[MID];
@@ -133,52 +133,52 @@ struct Bitboard {
     return thisBB;
   }
 
-  __host__ __device__ Bitboard& operator&=(const Bitboard& other) {
+  RUNTYPE Bitboard& operator&=(const Bitboard& other) {
     bb[TOP] &= other[TOP];
     bb[MID] &= other[MID];
     bb[BOTTOM] &= other[BOTTOM];
     return *this;
   }
 
-  __host__ __device__ Bitboard& operator|=(const Bitboard& other) {
+  RUNTYPE Bitboard& operator|=(const Bitboard& other) {
     bb[TOP] |= other[TOP];
     bb[MID] |= other[MID];
     bb[BOTTOM] |= other[BOTTOM];
     return *this;
   }
 
-  __host__ __device__ operator bool() const {
+  RUNTYPE operator bool() const {
     return bb[TOP] | bb[MID] | bb[BOTTOM];
   }
 
-  __host__ __device__ bool GetBit(Square square) const {
+  RUNTYPE bool GetBit(Square square) const {
     Region region = squareToRegion(square);
     int shift = REGION_SIZE - 1 - square % REGION_SIZE;
     return (bb[region] & (1 << shift)) != 0;
   }
 };
 
-__host__ __device__ inline Bitboard operator&(const Bitboard& BB1,
+RUNTYPE inline Bitboard operator&(const Bitboard& BB1,
                                               const Bitboard& BB2) {
   return {BB1[TOP] & BB2[TOP], BB1[MID] & BB2[MID], BB1[BOTTOM] & BB2[BOTTOM]};
 }
 
-__host__ __device__ inline Bitboard operator|(const Bitboard& BB1,
+RUNTYPE inline Bitboard operator|(const Bitboard& BB1,
                                               const Bitboard& BB2) {
   return {BB1[TOP] | BB2[TOP], BB1[MID] | BB2[MID], BB1[BOTTOM] | BB2[BOTTOM]};
 }
 
-__host__ __device__ inline Bitboard operator~(const Bitboard& bb) {
+RUNTYPE inline Bitboard operator~(const Bitboard& bb) {
   return {(~bb[TOP]) & FULL_REGION, (~bb[MID]) & FULL_REGION,
           (~bb[BOTTOM]) & FULL_REGION};
 }
 
-__host__ __device__ inline void setSquare(Bitboard& bb, const Square square) {
+RUNTYPE inline void setSquare(Bitboard& bb, const Square square) {
   Region regionIdx = squareToRegion(square);
   bb[regionIdx] |= 1 << (REGION_SIZE - 1 - square % REGION_SIZE);
 }
 
-__host__ __device__ inline uint32_t popcount(uint32_t value) {
+RUNTYPE inline uint32_t popcount(uint32_t value) {
 #ifdef __CUDA_ARCH__
   return __popc(value);
 #else
@@ -235,13 +235,13 @@ struct BitboardIterator {
   uint32_t squareOffset;
 
  public:
-  __host__ __device__ void Init(const Bitboard& bb) {
+  RUNTYPE void Init(const Bitboard& bb) {
     bitboard = bb;
     currentRegion = TOP;
     squareOffset = 26;
     occupied = false;
   }
-  __host__ __device__ bool Next() {
+  RUNTYPE bool Next() {
     while (bitboard[currentRegion] == 0) {
       if (currentRegion != BOTTOM) {
         currentRegion = static_cast<Region>(currentRegion + 1);
@@ -259,7 +259,7 @@ struct BitboardIterator {
     return true;
   }
 
-  __host__ __device__ Square GetCurrentSquare() {
+  RUNTYPE Square GetCurrentSquare() {
     return static_cast<Square>(squareOffset - bitPos);
   }
 };

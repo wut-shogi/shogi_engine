@@ -8,21 +8,20 @@ namespace engine {
 struct Board {
   Bitboard bbs[BB::Type::SIZE];
   InHandLayout inHand;
-  __host__ __device__ Board() {}
+  RUNTYPE Board() {}
 
   Board(std::array<Bitboard, BB::Type::SIZE>&& bbs, InHandLayout inHand)
       : inHand(inHand) {
     std::memcpy(this->bbs, bbs.data(), sizeof(this->bbs));
   }
 
-  __host__ __device__ Bitboard& operator[](BB::Type idx) { return bbs[idx]; }
+  RUNTYPE Bitboard& operator[](BB::Type idx) { return bbs[idx]; }
 
-  __host__ __device__ const Bitboard& operator[](BB::Type idx) const {
+  RUNTYPE const Bitboard& operator[](BB::Type idx) const {
     return bbs[idx];
   }
 };
 
-std::string boardToSFEN(const Board& board);
 void print_Board(const Board& board);
 
 namespace Boards {

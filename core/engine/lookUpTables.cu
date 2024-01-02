@@ -266,9 +266,12 @@ void cleanup() {
 }
 }  // namespace CPU
 namespace GPU {
+#ifdef __CUDACC__
 __device__ __constant__ LookUpTables lookUpTables[1];
 static LookUpTables lookUpsTables_Host;
+#endif
 int init() {
+#ifdef __CUDACC__
   cudaMalloc((void**)&lookUpsTables_Host.rankAttacks,
              ARRAY_SIZE * sizeof(Bitboard));
   cudaMalloc((void**)&lookUpsTables_Host.fileAttacks,
@@ -360,10 +363,12 @@ int init() {
             cudaStatus);
     return -1;
   }
+#endif
   return 0;
 }
 
 void cleanup() {
+#ifdef __CUDACC__
   cudaFree(GPU::lookUpsTables_Host.rankAttacks);
   cudaFree(GPU::lookUpsTables_Host.fileAttacks);
   cudaFree(GPU::lookUpsTables_Host.diagRightAttacks);
@@ -372,19 +377,18 @@ void cleanup() {
   cudaFree(GPU::lookUpsTables_Host.fileMask);
   cudaFree(GPU::lookUpsTables_Host.startSqDiagRight);
   cudaFree(GPU::lookUpsTables_Host.startSqDiagLeft);
+#endif
 }
 }  // namespace GPU
 
-__host__ __device__ uint32_t getRankBlockPattern(const Bitboard& bb,
-                                                 Square square) {
+RUNTYPE uint32_t getRankBlockPattern(const Bitboard& bb, Square square) {
   const uint32_t& region = bb[squareToRegion(square)];
   uint32_t rowsBeforeInRegion = (square / BOARD_DIM) % 3;
   uint32_t result = region << 5 << (rowsBeforeInRegion * BOARD_DIM) << 1 >> 25;
   return result;
 }
 
-__host__ __device__ uint32_t getFileBlockPattern(const Bitboard& occupied,
-                                                 Square square) {
+RUNTYPE uint32_t getFileBlockPattern(const Bitboard& occupied, Square square) {
   int offset = squareToFile(square);
   uint32_t result = 0;
   result |= isBitSet(occupied[TOP], 17 - offset) << 6;
@@ -397,8 +401,8 @@ __host__ __device__ uint32_t getFileBlockPattern(const Bitboard& occupied,
   return result;
 }
 
-__host__ __device__ uint32_t getDiagRightBlockPattern(const Bitboard& occupied,
-                                                      Square square) {
+RUNTYPE uint32_t getDiagRightBlockPattern(const Bitboard& occupied,
+                                          Square square) {
   uint32_t result = 0;
 #ifdef __CUDA_ARCH__
   uint32_t startingSquare = GPU::lookUpTables[0].startSqDiagRight[square];
@@ -424,8 +428,8 @@ __host__ __device__ uint32_t getDiagRightBlockPattern(const Bitboard& occupied,
   return result;
 }
 
-__host__ __device__ uint32_t getDiagLeftBlockPattern(const Bitboard& occupied,
-                                                     Square square) {
+RUNTYPE uint32_t getDiagLeftBlockPattern(const Bitboard& occupied,
+                                         Square square) {
   uint32_t result = 0;
 #ifdef __CUDA_ARCH__
   uint32_t startingSquare = GPU::lookUpTables[0].startSqDiagLeft[square];
@@ -452,60 +456,50 @@ __host__ __device__ uint32_t getDiagLeftBlockPattern(const Bitboard& occupied,
   return result;
 }
 
-__host__ __device__ const Bitboard& getRankAttacks(const Square& square,
-                                                   const Bitboard& occupied) {
+RUNTYPE const Bitboard& getRankAttacks(const Square& square,
+                                       const Bitboard& occupied) {
   int index = square * 128 + getRankBlockPattern(occupied, square);
 #ifdef __CUDA_ARCH__
-  return GPU::lookUpTables[0]
-      .rankAttacks[index];
+  return GPU::lookUpTables[0].rankAttacks[index];
 #else
-  return CPU::lookUpTables
-      .rankAttacks[index];
+  return CPU::lookUpTables.rankAttacks[index];
 #endif
 }
-__host__ __device__ const Bitboard& getFileAttacks(const Square& square,
-                                                   const Bitboard& occupied) {
+RUNTYPE const Bitboard& getFileAttacks(const Square& square,
+                                       const Bitboard& occupied) {
   int index = square * 128 + getFileBlockPattern(occupied, square);
 #ifdef __CUDA_ARCH__
-  return GPU::lookUpTables[0]
-      .fileAttacks[index];
+  return GPU::lookUpTables[0].fileAttacks[index];
 #else
-  return CPU::lookUpTables
-      .fileAttacks[index];
+  return CPU::lookUpTables.fileAttacks[index];
 #endif
 }
-__host__ __device__ const Bitboard& getDiagRightAttacks(
-    const Square& square,
-    const Bitboard& occupied) {
+RUNTYPE const Bitboard& getDiagRightAttacks(const Square& square,
+                                            const Bitboard& occupied) {
   int index = square * 128 + getDiagRightBlockPattern(occupied, square);
 #ifdef __CUDA_ARCH__
-  return GPU::lookUpTables[0]
-      .diagRightAttacks[index];
+  return GPU::lookUpTables[0].diagRightAttacks[index];
 #else
-  return CPU::lookUpTables
-      .diagRightAttacks[index];
+  return CPU::lookUpTables.diagRightAttacks[index];
 #endif
 }
-__host__ __device__ const Bitboard& getDiagLeftAttacks(
-    const Square& square,
-    const Bitboard& occupied) {
+RUNTYPE const Bitboard& getDiagLeftAttacks(const Square& square,
+                                           const Bitboard& occupied) {
   int index = square * 128 + getDiagLeftBlockPattern(occupied, square);
 #ifdef __CUDA_ARCH__
-  return GPU::lookUpTables[0]
-      .diagLeftAttacks[index];
+  return GPU::lookUpTables[0].diagLeftAttacks[index];
 #else
-  return CPU::lookUpTables
-      .diagLeftAttacks[index];
+  return CPU::lookUpTables.diagLeftAttacks[index];
 #endif
 }
-__host__ __device__ const Bitboard& getRankMask(const uint32_t& rank) {
+RUNTYPE const Bitboard& getRankMask(const uint32_t& rank) {
 #ifdef __CUDA_ARCH__
   return GPU::lookUpTables[0].rankMask[rank];
 #else
   return CPU::lookUpTables.rankMask[rank];
 #endif
 }
-__host__ __device__ const Bitboard& getFileMask(const uint32_t& file) {
+RUNTYPE const Bitboard& getFileMask(const uint32_t& file) {
 #ifdef __CUDA_ARCH__
   return GPU::lookUpTables[0].fileMask[file];
 #else

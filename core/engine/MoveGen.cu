@@ -8,10 +8,10 @@ namespace engine {
 // kolorami). Dla spinowanych figur ich ruchy to ruch & odpowiedni slajd od
 // króla (np file dla pionków) & pinuj¹ce
 // Teoretycznie zosta³o tylko generatemoves do przerobienia
-__host__ __device__ void getWhitePiecesInfo(const Board& board,
-                                            Bitboard& outPinned,
-                                            Bitboard& outValidMoves,
-                                            Bitboard& outAttackedByEnemy) {
+RUNTYPE void getWhitePiecesInfo(const Board& board,
+                                Bitboard& outPinned,
+                                Bitboard& outValidMoves,
+                                Bitboard& outAttackedByEnemy) {
   Bitboard king = board[BB::Type::KING] & board[BB::Type::ALL_WHITE];
   Bitboard pieces, moves, attacks, attacksFull, mask, potentialPin, pinned,
       attackedByEnemy, enemyCheckingPieces, enemySlidingChecksPaths;
@@ -19,19 +19,28 @@ __host__ __device__ void getWhitePiecesInfo(const Board& board,
   Square square;
 
   // Non Sliding pieces
+  // King
+  pieces = board[BB::Type::KING] & board[BB::Type::ALL_BLACK];
+  enemyCheckingPieces |=
+      (moveNE(king) | moveN(king) | moveNW(king) | moveE(king) | moveW(pieces) |
+       moveSE(king) | moveS(king) | moveSW(king)) &
+      pieces;
+  attackedByEnemy |= moveNE(pieces) | moveN(pieces) | moveNW(pieces) |
+                     moveE(pieces) | moveW(pieces) | moveSE(pieces) |
+                     moveS(pieces) | moveSW(pieces);
   // Pawns
-  pieces = board.bbs[BB::Type::PAWN] & board.bbs[BB::Type::ALL_BLACK] &
+  pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
            ~board[BB::Type::PROMOTED];
   enemyCheckingPieces |= moveS(king) & pieces;
   attackedByEnemy |= moveN(pieces);
   // Knights
-  pieces = board.bbs[BB::Type::KNIGHT] & board.bbs[BB::Type::ALL_BLACK] &
+  pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_BLACK] &
            ~board[BB::Type::PROMOTED];
   enemyCheckingPieces |= moveS(moveSE(king) | moveSW(king)) & pieces;
   attackedByEnemy |= moveN(moveNE(pieces) | moveNW(pieces));
   // Silver generals
-  pieces = board.bbs[BB::Type::SILVER_GENERAL] &
-           board.bbs[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
+  pieces = board[BB::Type::SILVER_GENERAL] &
+           board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
   enemyCheckingPieces |= (moveSE(king) | moveS(king) | moveSW(king) |
                           moveNE(king) | moveNW(king)) &
                          pieces;
@@ -42,7 +51,7 @@ __host__ __device__ void getWhitePiecesInfo(const Board& board,
             ((board[BB::Type::PAWN] | board[BB::Type::KNIGHT] |
               board[BB::Type::SILVER_GENERAL] | board[BB::Type::LANCE]) &
              board[BB::Type::PROMOTED])) &
-           board.bbs[BB::Type::ALL_BLACK];
+           board[BB::Type::ALL_BLACK];
   enemyCheckingPieces |= (moveSE(king) | moveS(king) | moveSW(king) |
                           moveE(king) | moveW(king) | moveN(king)) &
                          pieces;
@@ -274,10 +283,10 @@ __host__ __device__ void getWhitePiecesInfo(const Board& board,
   outAttackedByEnemy = attackedByEnemy;
 }
 
-__host__ __device__ void getBlackPiecesInfo(const Board& board,
-                                            Bitboard& outPinned,
-                                            Bitboard& outValidMoves,
-                                            Bitboard& outAttackedByEnemy) {
+RUNTYPE void getBlackPiecesInfo(const Board& board,
+                                Bitboard& outPinned,
+                                Bitboard& outValidMoves,
+                                Bitboard& outAttackedByEnemy) {
   Bitboard king = board[BB::Type::KING] & board[BB::Type::ALL_BLACK];
   Bitboard pieces, moves, attacks, attacksFull, mask, potentialPin, pinned,
       attackedByEnemy, enemyCheckingPieces, enemySlidingChecksPaths;
@@ -285,19 +294,28 @@ __host__ __device__ void getBlackPiecesInfo(const Board& board,
   Square square;
 
   // Non Sliding pieces
+  // King
+  pieces = board[BB::Type::KING] & board[BB::Type::ALL_WHITE];
+  enemyCheckingPieces |=
+      (moveNE(king) | moveN(king) | moveNW(king) | moveE(king) | moveW(pieces) |
+       moveSE(king) | moveS(king) | moveSW(king)) &
+      pieces;
+  attackedByEnemy |= moveNE(pieces) | moveN(pieces) | moveNW(pieces) |
+                     moveE(pieces) | moveW(pieces) | moveSE(pieces) |
+                     moveS(pieces) | moveSW(pieces);
   // Pawns
-  pieces = board.bbs[BB::Type::PAWN] & board.bbs[BB::Type::ALL_WHITE] &
+  pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
            ~board[BB::Type::PROMOTED];
   enemyCheckingPieces |= moveN(king) & pieces;
   attackedByEnemy |= moveS(pieces);
   // Knights
-  pieces = board.bbs[BB::Type::KNIGHT] & board.bbs[BB::Type::ALL_WHITE] &
+  pieces = board[BB::Type::KNIGHT] & board[BB::Type::ALL_WHITE] &
            ~board[BB::Type::PROMOTED];
   enemyCheckingPieces |= moveN(moveNE(king) | moveNW(king)) & pieces;
   attackedByEnemy |= moveS(moveSE(pieces) | moveSW(pieces));
   // Silver generals
-  pieces = board.bbs[BB::Type::SILVER_GENERAL] &
-           board.bbs[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
+  pieces = board[BB::Type::SILVER_GENERAL] &
+           board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
   enemyCheckingPieces |= (moveNE(king) | moveN(king) | moveNW(king) |
                           moveSE(king) | moveSW(king)) &
                          pieces;
@@ -308,7 +326,7 @@ __host__ __device__ void getBlackPiecesInfo(const Board& board,
             ((board[BB::Type::PAWN] | board[BB::Type::KNIGHT] |
               board[BB::Type::SILVER_GENERAL] | board[BB::Type::LANCE]) &
              board[BB::Type::PROMOTED])) &
-           board.bbs[BB::Type::ALL_WHITE];
+           board[BB::Type::ALL_WHITE];
   enemyCheckingPieces |= (moveNE(king) | moveN(king) | moveNW(king) |
                           moveE(king) | moveW(king) | moveS(king)) &
                          pieces;
@@ -541,10 +559,10 @@ __host__ __device__ void getBlackPiecesInfo(const Board& board,
   outAttackedByEnemy = attackedByEnemy;
 }
 
-__host__ __device__ uint32_t countWhiteMoves(const Board& board,
-                                             Bitboard& pinned,
-                                             Bitboard& validMoves,
-                                             Bitboard& attackedByEnemy) {
+RUNTYPE uint32_t countWhiteMoves(const Board& board,
+                                 Bitboard& pinned,
+                                 Bitboard& validMoves,
+                                 Bitboard& attackedByEnemy) {
   Bitboard pieces, moves, ourAttacks;
   Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
   BitboardIterator iterator;
@@ -577,8 +595,8 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
 
   // Pawn moves
   {
-    pieces = board[BB::Type::PAWN] &
-             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
+    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
     moves = moveS((pieces & ~pinnedPieces) |
                   (pieces & pinnedPieces & kingRayFile)) &
             validMoves;
@@ -606,8 +624,8 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
 
   // SilverGenerals moves
   {
-    pieces = board[BB::Type::SILVER_GENERAL] &
-             board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
+    pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_WHITE] &
+             ~board[BB::Type::PROMOTED];
     moves = moveS((pieces & ~pinnedPieces) |
                   (pieces & pinnedPieces & kingRayFile)) &
             validMoves;
@@ -1005,10 +1023,10 @@ __host__ __device__ uint32_t countWhiteMoves(const Board& board,
   return numberOfMoves;
 }
 
-__host__ __device__ uint32_t countBlackMoves(const Board& board,
-                                             Bitboard& pinned,
-                                             Bitboard& validMoves,
-                                             Bitboard& attackedByEnemy) {
+RUNTYPE uint32_t countBlackMoves(const Board& board,
+                                 Bitboard& pinned,
+                                 Bitboard& validMoves,
+                                 Bitboard& attackedByEnemy) {
   Bitboard pieces, moves, ourAttacks;
   Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
   BitboardIterator iterator;
@@ -1041,8 +1059,8 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
 
   // Pawn moves
   {
-    pieces = board[BB::Type::PAWN] &
-             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
+    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
     moves = moveN((pieces & ~pinnedPieces) |
                   (pieces & pinnedPieces & kingRayFile)) &
             validMoves;
@@ -1070,8 +1088,8 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
 
   // SilverGenerals moves
   {
-    pieces = board[BB::Type::SILVER_GENERAL] &
-             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
+    pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
     moves = moveN((pieces & ~pinnedPieces) |
                   (pieces & pinnedPieces & kingRayFile)) &
             validMoves;
@@ -1463,11 +1481,11 @@ __host__ __device__ uint32_t countBlackMoves(const Board& board,
   return numberOfMoves;
 }
 
-__host__ __device__ uint32_t generateWhiteMoves(const Board& board,
-                                                Bitboard& pinned,
-                                                Bitboard& validMoves,
-                                                Bitboard& attackedByEnemy,
-                                                Move* movesArray) {
+RUNTYPE uint32_t generateWhiteMoves(const Board& board,
+                                    Bitboard& pinned,
+                                    Bitboard& validMoves,
+                                    Bitboard& attackedByEnemy,
+                                    Move* movesArray) {
   Bitboard pieces, moves, ourAttacks;
   Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
   BitboardIterator movesIterator, iterator;
@@ -2220,11 +2238,11 @@ __host__ __device__ uint32_t generateWhiteMoves(const Board& board,
   return moveNumber;
 }
 
-__host__ __device__ uint32_t generateBlackMoves(const Board& board,
-                                                Bitboard& pinned,
-                                                Bitboard& validMoves,
-                                                Bitboard& attackedByEnemy,
-                                                Move* movesArray) {
+RUNTYPE uint32_t generateBlackMoves(const Board& board,
+                                    Bitboard& pinned,
+                                    Bitboard& validMoves,
+                                    Bitboard& attackedByEnemy,
+                                    Move* movesArray) {
   Bitboard pieces, moves, ourAttacks;
   Bitboard occupied = board[BB::Type::ALL_WHITE] | board[BB::Type::ALL_BLACK];
   BitboardIterator movesIterator, iterator;
@@ -2268,8 +2286,8 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
 
   // Pawn moves
   {
-    pieces = board[BB::Type::PAWN] &
-             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
+    pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
     moves = moveN((pieces & ~pinnedPieces) |
                   (pieces & pinnedPieces & kingRayFile)) &
             validMoves;
@@ -2516,8 +2534,8 @@ __host__ __device__ uint32_t generateBlackMoves(const Board& board,
 
   // Lances moves
   {
-    pieces = board[BB::Type::LANCE] &
-             board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
+    pieces = board[BB::Type::LANCE] & board[BB::Type::ALL_BLACK] &
+             ~board[BB::Type::PROMOTED];
     iterator.Init((pieces & ~pinnedPieces) |
                   (pieces & pinnedPieces & kingRayFile));
     while (iterator.Next()) {

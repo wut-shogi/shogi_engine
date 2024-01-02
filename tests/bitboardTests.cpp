@@ -148,13 +148,13 @@ TEST(Bitboards, BitboardIterator) {
   }
 
   EXPECT_EQ(activeSquares.size(), 9);
-  EXPECT_TRUE(activeSquares.contains(A9));
-  EXPECT_TRUE(activeSquares.contains(B4));
-  EXPECT_TRUE(activeSquares.contains(C1));
-  EXPECT_TRUE(activeSquares.contains(D9));
-  EXPECT_TRUE(activeSquares.contains(E4));
-  EXPECT_TRUE(activeSquares.contains(F1));
-  EXPECT_TRUE(activeSquares.contains(G9));
-  EXPECT_TRUE(activeSquares.contains(H4));
-  EXPECT_TRUE(activeSquares.contains(I1));
+  EXPECT_TRUE(activeSquares.find(A9) != activeSquares.end());
+  EXPECT_TRUE(activeSquares.find(B4) != activeSquares.end());
+  EXPECT_TRUE(activeSquares.find(C1) != activeSquares.end());
+  EXPECT_TRUE(activeSquares.find(D9) != activeSquares.end());
+  EXPECT_TRUE(activeSquares.find(E4) != activeSquares.end());
+  EXPECT_TRUE(activeSquares.find(F1) != activeSquares.end());
+  EXPECT_TRUE(activeSquares.find(G9) != activeSquares.end());
+  EXPECT_TRUE(activeSquares.find(H4) != activeSquares.end());
+  EXPECT_TRUE(activeSquares.find(I1) != activeSquares.end());
 }

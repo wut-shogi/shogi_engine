@@ -23,7 +23,7 @@ Move GetBestMove(const Board& board,
 uint64_t countMovesCPU(Board& board, uint16_t depth, bool isWhite);
 
 template <bool Verbose = false>
-__host__ uint64_t perftCPU(const Board& board,
+uint64_t perftCPU(const Board& board,
                            uint16_t depth,
                            bool isWhite = false) {
   CPU::MoveList moves = CPU::MoveList(board, isWhite);
@@ -52,6 +52,8 @@ __host__ uint64_t perftCPU(const Board& board,
   return moveCount;
 }
 
+
+#ifdef __CUDACC__
 class GPUBuffer {
  public:
   GPUBuffer(const Board& startBoard);
@@ -81,7 +83,7 @@ uint64_t countMovesGPU(Move* moves,
                        GPUBuffer& gpuBuffer);
 
 template <bool Verbose = false>
-__host__ uint64_t perftGPU(Board& board, uint16_t depth, bool isWhite = false) {
+uint64_t perftGPU(Board& board, uint16_t depth, bool isWhite = false) {
   GPUBuffer gpuBuffer(board);
   CPU::MoveList moves(board, isWhite);
   uint64_t nodesSearched = 0;
@@ -101,7 +103,7 @@ __host__ uint64_t perftGPU(Board& board, uint16_t depth, bool isWhite = false) {
     std::cout << "Nodes searched: " << nodesSearched << std::endl;
   return nodesSearched;
 }
-
+#endif
 }  // namespace SEARCH
 }  // namespace engine
 }  // namespace shogi

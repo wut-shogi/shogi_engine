@@ -32,15 +32,20 @@ set(sourceFiles
 
 set(dllFiles
     ../include/shogi_engine.h
-    engine/shogi_engine.cu
+    engine/shogi_engine.cpp
 )
 
-add_library(shogi_engine_core STATIC
-    ${headerFiles} ${sourceFiles}
-)
+if(NOT SHOGI_CUDA_SUPPORT)
+    set_source_files_properties(${sourceFiles} PROPERTIES LANGUAGE CXX)
+endif()
+
+add_library(shogi_engine_core STATIC ${headerFiles} ${sourceFiles})
 target_include_directories(shogi_engine_core PUBLIC include)
-set_target_properties(shogi_engine_core PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(shogi_engine_core PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+
+if(SHOGI_CUDA_SUPPORT)
+    set_target_properties(shogi_engine_core PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    set_target_properties(shogi_engine_core PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+endif()
 
 add_library(shogi_engine SHARED ${dllFiles})
 target_link_libraries(shogi_engine PRIVATE shogi_engine_core)

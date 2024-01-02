@@ -4,7 +4,7 @@
 
 namespace shogi {
 namespace engine {
-__host__ __device__ inline Bitboard moveN(Bitboard bb) {
+RUNTYPE inline Bitboard moveN(Bitboard bb) {
   Bitboard out;
   out[TOP] =
       ((bb[TOP] << BOARD_DIM) | (bb[MID] >> (2 * BOARD_DIM))) & FULL_REGION;
@@ -14,7 +14,7 @@ __host__ __device__ inline Bitboard moveN(Bitboard bb) {
   return out;
 }
 
-__host__ __device__ inline Bitboard moveNE(Bitboard bb) {
+RUNTYPE inline Bitboard moveNE(Bitboard bb) {
   Bitboard out;
   out[TOP] = (((bb[TOP] & NOT_RIGHT_FILE) << (BOARD_DIM - 1)) |
               ((bb[MID] & NOT_RIGHT_FILE) >> (2 * BOARD_DIM + 1))) &
@@ -27,7 +27,7 @@ __host__ __device__ inline Bitboard moveNE(Bitboard bb) {
   return out;
 }
 
-__host__ __device__ inline Bitboard moveE(Bitboard bb) {
+RUNTYPE inline Bitboard moveE(Bitboard bb) {
   Bitboard out;
   out[TOP] = (bb[TOP] & NOT_RIGHT_FILE) >> 1;
   out[MID] = (bb[MID] & NOT_RIGHT_FILE) >> 1;
@@ -35,7 +35,7 @@ __host__ __device__ inline Bitboard moveE(Bitboard bb) {
   return out;
 }
 
-__host__ __device__ inline Bitboard moveSE(Bitboard bb) {
+RUNTYPE inline Bitboard moveSE(Bitboard bb) {
   Bitboard out;
   out[BOTTOM] = (((bb[BOTTOM] & NOT_RIGHT_FILE) >> (BOARD_DIM + 1)) |
                  ((bb[MID] & NOT_RIGHT_FILE) << (2 * BOARD_DIM - 1))) &
@@ -47,7 +47,7 @@ __host__ __device__ inline Bitboard moveSE(Bitboard bb) {
   return out;
 }
 
-__host__ __device__ inline Bitboard moveS(Bitboard bb) {
+RUNTYPE inline Bitboard moveS(Bitboard bb) {
   Bitboard out;
   out[BOTTOM] =
       ((bb[BOTTOM] >> BOARD_DIM) | (bb[MID] << (2 * BOARD_DIM))) & FULL_REGION;
@@ -57,7 +57,7 @@ __host__ __device__ inline Bitboard moveS(Bitboard bb) {
   return out;
 }
 
-__host__ __device__ inline Bitboard moveSW(Bitboard bb) {
+RUNTYPE inline Bitboard moveSW(Bitboard bb) {
   Bitboard out;
   out[BOTTOM] = (((bb[BOTTOM] & NOT_LEFT_FILE) >> (BOARD_DIM - 1)) |
                  (bb[MID] << (2 * BOARD_DIM + 1))) &
@@ -69,7 +69,7 @@ __host__ __device__ inline Bitboard moveSW(Bitboard bb) {
   return out;
 }
 
-__host__ __device__ inline Bitboard moveW(Bitboard bb) {
+RUNTYPE inline Bitboard moveW(Bitboard bb) {
   Bitboard out;
   out[TOP] = (bb[TOP] & NOT_LEFT_FILE) << 1;
   out[MID] = (bb[MID] & NOT_LEFT_FILE) << 1;
@@ -77,7 +77,7 @@ __host__ __device__ inline Bitboard moveW(Bitboard bb) {
   return out;
 }
 
-__host__ __device__ inline Bitboard moveNW(Bitboard bb) {
+RUNTYPE inline Bitboard moveNW(Bitboard bb) {
   Bitboard out;
   out[TOP] = (((bb[TOP] & NOT_LEFT_FILE) << (BOARD_DIM + 1)) |
               ((bb[MID] & NOT_LEFT_FILE) >> (2 * BOARD_DIM - 1))) &
@@ -89,7 +89,7 @@ __host__ __device__ inline Bitboard moveNW(Bitboard bb) {
   return out;
 }
 
-__host__ __device__ inline Bitboard getFullFile(int fileIdx) {
+RUNTYPE inline Bitboard getFullFile(int fileIdx) {
   uint32_t region = FIRST_FILE >> fileIdx;
   return Bitboard(region, region, region);
 }
@@ -108,7 +108,7 @@ union MoveInfo {
 };
 
 template <bool returnInfo>
-__host__ __device__ inline MoveInfo makeMove(Board& board, Move move) {
+RUNTYPE inline MoveInfo makeMove(Board& board, Move move) {
   uint64_t one = 1;
   Region toRegionIdx = squareToRegion(static_cast<Square>(move.to));
   uint32_t toRegion = 1 << (REGION_SIZE - 1 - move.to % REGION_SIZE);
@@ -190,11 +190,11 @@ __host__ __device__ inline MoveInfo makeMove(Board& board, Move move) {
   return info;
 }
 
-__host__ __device__ inline MoveInfo makeMove(Board& board, Move move) {
+RUNTYPE inline MoveInfo makeMove(Board& board, Move move) {
   return makeMove<false>(board, move);
 }
 
-__host__ inline void unmakeMove(Board& board,
+inline void unmakeMove(Board& board,
                                 Move move,
                                 MoveInfo moveReturnInfo) {
   uint64_t one = 1;

@@ -1,7 +1,13 @@
 #pragma once
 #include <cstdint>
 #include "Rules.h"
+
+#ifdef __CUDACC__
 #include <cuda_runtime.h>
+#define RUNTYPE __host__ __device__
+#else
+#define RUNTYPE
+#endif
 
 namespace shogi {
 namespace engine {
@@ -47,15 +53,15 @@ enum Square : int32_t {
   NONE,
 };
 
-__host__ __device__ inline int squareToRank(Square square) {
+RUNTYPE inline int squareToRank(Square square) {
   return square / BOARD_DIM;
 }
 
-__host__ __device__ inline int squareToFile(Square square) {
+RUNTYPE inline int squareToFile(Square square) {
   return square % BOARD_DIM;
 }
 
-__host__ __device__ inline Square rankFileToSquare(uint32_t rank,
+RUNTYPE inline Square rankFileToSquare(uint32_t rank,
                                                    uint32_t file) {
   return static_cast<Square>(rank * BOARD_DIM + file);
 }
@@ -71,7 +77,7 @@ enum Region : uint32_t {
   EMPTY_REGION = 0,
   FULL_REGION = 134217727,
 };
-__host__ __device__ inline Region squareToRegion(Square square) {
+RUNTYPE inline Region squareToRegion(Square square) {
   return (Region)(square / REGION_SIZE);
 }
 
