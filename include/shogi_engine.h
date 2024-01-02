@@ -3,7 +3,7 @@
 #include <windows.h>
 #define SHOGILIBRARY_API __declspec(dllexport)
 #elif defined(__GNUC__)
-#define SHOGILIBRARY_API __attribute__((visibility("default")))
+#define SHOGILIBRARY_API  //__attribute__((visibility("default")))
 #else
 #pragma warning Unknown dynamic link import / export semantics.
 #endif
