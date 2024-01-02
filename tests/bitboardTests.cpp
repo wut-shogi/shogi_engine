@@ -3,7 +3,7 @@
 #include <unordered_set>
 using namespace shogi::engine;
 
-TEST(Bitboard, DefaultConstructor) {
+TEST(Bitboards, DefaultConstructor) {
   Bitboard bitboard;
 
   EXPECT_EQ(bitboard[TOP], 0);
@@ -11,7 +11,7 @@ TEST(Bitboard, DefaultConstructor) {
   EXPECT_EQ(bitboard[BOTTOM], 0);
 }
 
-TEST(Bitboard, FromRegionsConstructor) {
+TEST(Bitboards, FromRegionsConstructor) {
   Bitboard bitboard(1, 2, 3);
 
   EXPECT_EQ(bitboard[TOP], 1);
@@ -19,7 +19,7 @@ TEST(Bitboard, FromRegionsConstructor) {
   EXPECT_EQ(bitboard[BOTTOM], 3);
 }
 
-TEST(Bitboard, FromBoolArrayConstructor) {
+TEST(Bitboards, FromBoolArrayConstructor) {
   std::array<bool, BOARD_SIZE> bitboardRepresentation = {
       1, 0, 1, 0, 1, 0, 1, 0, 1,  //
       1, 0, 1, 0, 1, 0, 1, 0, 1,  //
@@ -39,7 +39,7 @@ TEST(Bitboard, FromBoolArrayConstructor) {
   EXPECT_EQ(bitboard[BOTTOM], 134217727);
 }
 
-TEST(Bitboard, FromSquareConstructor) {
+TEST(Bitboards, FromSquareConstructor) {
   Bitboard bitboard(B5);
   EXPECT_EQ(bitboard[TOP], 8192);
   bitboard = Bitboard(D9);
@@ -48,14 +48,14 @@ TEST(Bitboard, FromSquareConstructor) {
   EXPECT_EQ(bitboard[BOTTOM], 1);
 }
 
-TEST(Bitboard, GetRegion) {
+TEST(Bitboards, GetRegion) {
   Bitboard bitboard(1, 2, 3);
   EXPECT_EQ(bitboard[TOP], 1);
   EXPECT_EQ(bitboard[MID], 2);
   EXPECT_EQ(bitboard[BOTTOM], 3);
 }
 
-TEST(Bitboard, AssignOperator) {
+TEST(Bitboards, AssignOperator) {
   Bitboard bitboard1(1, 2, 3);
   Bitboard bitboard2 = bitboard1;
   EXPECT_EQ(bitboard2[TOP], 1);
@@ -63,7 +63,7 @@ TEST(Bitboard, AssignOperator) {
   EXPECT_EQ(bitboard2[BOTTOM], 3);
 }
 
-TEST(Bitboard, AndAssignOperator) {
+TEST(Bitboards, AndAssignOperator) {
   Bitboard bitboard1(1, 4, 16);
   Bitboard bitboard2(2, 4, 20);
   bitboard1 &= bitboard2;
@@ -72,7 +72,7 @@ TEST(Bitboard, AndAssignOperator) {
   EXPECT_EQ(bitboard1[BOTTOM], 16 & 16);
 }
 
-TEST(Bitboard, OrAssignOperator) {
+TEST(Bitboards, OrAssignOperator) {
   Bitboard bitboard1(1, 4, 16);
   Bitboard bitboard2(2, 8, 16);
   bitboard1 |= bitboard2;
@@ -81,21 +81,21 @@ TEST(Bitboard, OrAssignOperator) {
   EXPECT_EQ(bitboard1[BOTTOM], 16 | 16);
 }
 
-TEST(Bitboard, BoolOperator) {
+TEST(Bitboards, BoolOperator) {
   Bitboard bitboard1(0, 0, 0);
   Bitboard bitboard2(0, 0, 1);
   EXPECT_TRUE(bitboard2);
   EXPECT_FALSE(bitboard1);
 }
 
-TEST(Bitboard, GetBit) {
+TEST(Bitboards, GetBit) {
   Bitboard bitboard(1, 4, 20);
   EXPECT_TRUE(bitboard.GetBit(C1));
   EXPECT_FALSE(bitboard.GetBit(C2));
   EXPECT_TRUE(bitboard.GetBit(I3));
 }
 
-TEST(Bitboard, AndOperator) {
+TEST(Bitboards, AndOperator) {
   Bitboard bitboard1(1, 4, 16);
   Bitboard bitboard2(2, 4, 20);
   Bitboard result = bitboard1 & bitboard2;
@@ -104,7 +104,7 @@ TEST(Bitboard, AndOperator) {
   EXPECT_EQ(result[BOTTOM], 16 & 20);
 }
 
-TEST(Bitboard, OrOperator) {
+TEST(Bitboards, OrOperator) {
   Bitboard bitboard1(1, 4, 16);
   Bitboard bitboard2(2, 8, 16);
   Bitboard result = bitboard1 | bitboard2;
@@ -113,7 +113,7 @@ TEST(Bitboard, OrOperator) {
   EXPECT_EQ(result[BOTTOM], 16 | 16);
 }
 
-TEST(Bitboard, NegationOperator) {
+TEST(Bitboards, NegationOperator) {
   Bitboard bitboard(1, 4, 16);
   Bitboard result = ~bitboard;
   EXPECT_EQ(result[TOP], ~1 & FULL_REGION);
@@ -121,7 +121,7 @@ TEST(Bitboard, NegationOperator) {
   EXPECT_EQ(result[BOTTOM], ~16 & FULL_REGION);
 }
 
-TEST(Bitboard, SetSquare) {
+TEST(Bitboards, SetSquare) {
   Bitboard bitboard;
   setSquare(bitboard, C1);
   setSquare(bitboard, D9);
@@ -131,14 +131,14 @@ TEST(Bitboard, SetSquare) {
   EXPECT_EQ(bitboard[BOTTOM], 8192);
 }
 
-TEST(Bitboard, FFS) {
+TEST(Bitboards, FFS) {
   EXPECT_EQ(ffs_host(0), 0);
   EXPECT_EQ(ffs_host(1), 0);
   EXPECT_EQ(ffs_host(8192), 13);
   EXPECT_EQ(ffs_host(20), 2);
 }
 
-TEST(Bitboard, BitboardIterator) {
+TEST(Bitboards, BitboardIterator) {
   Bitboard bitboard(67112961, 67112961, 67112961);
   BitboardIterator iterator;
   iterator.Init(bitboard);

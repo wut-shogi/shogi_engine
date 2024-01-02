@@ -11,7 +11,7 @@ namespace engine {
 class GameSimulator {
  public:
   GameSimulator(uint16_t maxDepth, uint16_t maxTime, SEARCH::SearchType type)
-      : type(type), maxDepth(maxDepth), maxTime(maxTime) {}
+      : type(type), maxDepth(maxDepth), maxTime(maxTime), isWhite(false) {}
   void Run() {
     bool result = SEARCH::init();
     if (!result) {
@@ -42,8 +42,6 @@ class GameSimulator {
  private:
   Board board;
   bool isWhite;
-  uint8_t* d_Buffer;
-  uint32_t d_BufferSize;
   SEARCH::SearchType type;
   uint16_t maxDepth;
   uint16_t maxTime;

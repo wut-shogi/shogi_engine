@@ -15,3 +15,7 @@ extern "C" SHOGILIBRARY_API int getBestMove(const char* SFENstring,
                                             unsigned int maxTime,
                                             bool useGPU,
                                             char* output);
+
+extern "C" SHOGILIBRARY_API int makeMove(const char* SFENString,
+                                         const char* moveString,
+                                         char* output);

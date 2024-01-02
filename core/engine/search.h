@@ -2,6 +2,7 @@
 #include <vector>
 #include "Board.h"
 #include "CPUsearchHelpers.h"
+#include "USIconverter.h"
 
 namespace shogi {
 namespace engine {
@@ -29,7 +30,7 @@ __host__ uint64_t perftCPU(const Board& board,
   if (depth == 1) {
     for (int i = 0; i < moves.size(); i++) {
       if constexpr (Verbose)
-        std::cout << moveToUSI(*(moves.data() + i)) << ": " << 1 << std::endl;
+        std::cout << MoveToUSI(*(moves.data() + i)) << ": " << 1 << std::endl;
     }
     if constexpr (Verbose)
       std::cout << "Nodes searched: " << moves.size() << std::endl;
@@ -43,7 +44,7 @@ __host__ uint64_t perftCPU(const Board& board,
     count = countMovesCPU(tmpBoard, depth - 1, !isWhite);
     tmpBoard = board;
     if constexpr (Verbose)
-      std::cout << moveToUSI(move) << ": " << count << std::endl;
+      std::cout << MoveToUSI(move) << ": " << count << std::endl;
     moveCount += count;
   }
   if constexpr (Verbose)
@@ -92,7 +93,7 @@ __host__ uint64_t perftGPU(Board& board, uint16_t depth, bool isWhite = false) {
     uint64_t numberOfMoves =
         countMovesGPU(d_moves, 1, !isWhite, 1, depth, gpuBuffer);
     if constexpr (Verbose)
-      std::cout << moveToUSI(*(moves.data() + i)) << ": " << numberOfMoves
+      std::cout << MoveToUSI(*(moves.data() + i)) << ": " << numberOfMoves
                 << std::endl;
     nodesSearched += numberOfMoves;
   }

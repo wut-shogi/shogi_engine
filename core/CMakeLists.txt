@@ -12,6 +12,7 @@ set(headerFiles
     engine/rules.h
     engine/search.h
     engine/square.h
+    engine/USIconverter.h
 )
 
 set(sourceFiles
@@ -26,6 +27,7 @@ set(sourceFiles
     engine/GPUsearchHelpers.cu
     engine/lookUpTables.cu
     engine/search.cu
+    engine/USIconverter.cu
 )
 
 set(dllFiles

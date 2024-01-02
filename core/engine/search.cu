@@ -7,6 +7,7 @@
 #include "evaluation.h"
 #include "lookUpTables.h"
 #include "search.h"
+#include "USIconverter.h"
 
 namespace shogi {
 namespace engine {
@@ -116,8 +117,11 @@ Move GetBestMoveCPU(const Board& board, bool isWhite, uint16_t maxDepth) {
   CPU::MoveList rootMoves(board, isWhite);
   std::vector<uint32_t> nodesSearched(maxDepth, 0);
   CPU::MoveList moves(board, isWhite);
+  if (moves.size() == 0) {
+    return Move{0, 0, 0};
+  }
+  Move bestMove = *moves.begin();
   int16_t score = isWhite ? INT16_MIN : INT16_MAX;
-  Move bestMove;
   Board newBoard = board;
   for (const auto& move : moves) {
     makeMove(newBoard, move);
@@ -141,7 +145,7 @@ Move GetBestMoveCPU(const Board& board, bool isWhite, uint16_t maxDepth) {
     std::cout << "Generated: " << nodesSearched[i]
               << " positions on depth: " << i + 1 << std::endl;
   }
-  std::cout << " Best move found: " << moveToUSI(bestMove) << std::endl;
+  std::cout << " Best move found: " << MoveToUSI(bestMove) << std::endl;
   std::cout << "Time: " << duration.count() << " ms" << std::endl;
   return bestMove;
 }
@@ -278,10 +282,13 @@ void minMaxGPU(Move* moves,
 
 Move GetBestMoveGPU(const Board& board, bool isWhite, uint16_t maxDepth) {
   auto start = std::chrono::high_resolution_clock::now();
-  Move bestMove;
   std::vector<uint32_t> numberOfMovesPerDepth(maxDepth, 0);
   GPUBuffer gpuBuffer(board);
   CPU::MoveList rootMoves(board, isWhite);
+  if (rootMoves.size() == 0) {
+    return Move{0, 0, 0};
+  }
+  Move bestMove = *rootMoves.begin();
   Move* d_moves;
   gpuBuffer.ReserveMovesSpace(rootMoves.size(), 1, d_moves);
   cudaMemcpy(d_moves, rootMoves.begin(), rootMoves.size() * sizeof(Move),
@@ -308,7 +315,7 @@ Move GetBestMoveGPU(const Board& board, bool isWhite, uint16_t maxDepth) {
     std::cout << "Generated: " << numberOfMovesPerDepth[i]
               << " positions on depth: " << i + 1 << std::endl;
   }
-  std::cout << "Best move found: " << moveToUSI(bestMove) << std::endl;
+  std::cout << "Best move found: " << MoveToUSI(bestMove) << std::endl;
   std::cout << "Time: " << duration.count() << " ms" << std::endl;
   return bestMove;
 }

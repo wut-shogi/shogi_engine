@@ -2,6 +2,7 @@ add_executable(engine_tests
     bitboardTests.cpp
     moveGenTests.cpp
     example_test.cpp
+    USIconversionTests.cpp
     main.cpp)
 
 target_link_libraries(engine_tests
