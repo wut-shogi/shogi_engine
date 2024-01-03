@@ -66,7 +66,7 @@ extern "C" SHOGILIBRARY_API int makeMove(const char* SFENString,
     char* output) {
   bool isWhite;
   shogi::engine::Board board = shogi::engine::SFENToBoard(SFENString, isWhite);
-  shogi::engine::Move move = shogi::engine::USIToMove(moveString);
+  shogi::engine::Move move = shogi::engine::USIToMove(moveString, isWhite);
   if (move.from == 0 && move.to == 0 && move.promotion == 0)
     return 0;
   shogi::engine::makeMove(board, move);

@@ -151,7 +151,7 @@ std::string BoardToSFEN(const Board& board, bool isWhite) {
   return result;
 }
 
-Move USIToMove(const std::string& USImove) {
+Move USIToMove(const std::string& USImove, bool isWhite) {
   if (USImove.size() < 4 || USImove.size() > 5)
     return {0, 0, 0};
   Move move;
@@ -168,47 +168,27 @@ Move USIToMove(const std::string& USImove) {
     if (USImove[1] != '*')
       return {0, 0, 0};
     switch (USImove[0]) {
-      case 'p':
-        move.from = WHITE_PAWN_DROP;
-        break;
-      case 'l':
-        move.from = WHITE_LANCE_DROP;
-        break;
-      case 'n':
-        move.from = WHITE_KNIGHT_DROP;
-        break;
-      case 's':
-        move.from = WHITE_SILVER_GENERAL_DROP;
-        break;
-      case 'g':
-        move.from = WHITE_GOLD_GENERAL_DROP;
-        break;
-      case 'b':
-        move.from = WHITE_BISHOP_DROP;
-        break;
-      case 'r':
-        move.from = WHITE_ROOK_DROP;
-        break;
       case 'P':
-        move.from = BLACK_PAWN_DROP;
+        move.from = isWhite ? WHITE_PAWN_DROP : BLACK_PAWN_DROP;
         break;
       case 'L':
-        move.from = BLACK_LANCE_DROP;
+        move.from = isWhite ? WHITE_LANCE_DROP : BLACK_LANCE_DROP;
         break;
       case 'N':
-        move.from = BLACK_KNIGHT_DROP;
+        move.from = isWhite ? WHITE_KNIGHT_DROP : BLACK_KNIGHT_DROP;
         break;
       case 'S':
-        move.from = BLACK_SILVER_GENERAL_DROP;
+        move.from =
+            isWhite ? WHITE_SILVER_GENERAL_DROP : BLACK_SILVER_GENERAL_DROP;
         break;
       case 'G':
-        move.from = BLACK_GOLD_GENERAL_DROP;
+        move.from = isWhite ? WHITE_GOLD_GENERAL_DROP : BLACK_GOLD_GENERAL_DROP;
         break;
       case 'B':
-        move.from = BLACK_BISHOP_DROP;
+        move.from = isWhite ? WHITE_BISHOP_DROP : BLACK_BISHOP_DROP;
         break;
       case 'R':
-        move.from = BLACK_ROOK_DROP;
+        move.from = isWhite ? WHITE_ROOK_DROP : BLACK_ROOK_DROP;
         break;
       default:
         return {0, 0, 0};
@@ -231,7 +211,7 @@ Move USIToMove(const std::string& USImove) {
 }
 std::string MoveToUSI(Move move) {
   static const std::string pieceSymbols[14] = {
-      "p", "l", "n", "s", "g", "b", "r", "P", "L", "N", "S", "G", "B", "R"};
+      "P", "L", "N", "S", "G", "B", "R", "P", "L", "N", "S", "G", "B", "R"};
   std::string moveString = "";
   if (move.from >= shogi::engine::WHITE_PAWN_DROP) {
     moveString +=

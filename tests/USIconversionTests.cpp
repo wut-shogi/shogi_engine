@@ -55,6 +55,14 @@ TEST(USIConversion, MoveToUSI) {
   move.to = A1;
   move.promotion = 1;
   ASSERT_TRUE(MoveToUSI(move) == "1i1a+");
+  move.from = WHITE_LANCE_DROP;
+  move.to = B5;
+  move.promotion = 0;
+  ASSERT_TRUE(MoveToUSI(move) == "L*5b");
+  move.from = BLACK_LANCE_DROP;
+  move.to = B5;
+  move.promotion = 0;
+  ASSERT_TRUE(MoveToUSI(move) == "L*5b");
 }
 
 static bool moveEqual(Move move1, Move move2) {
@@ -67,17 +75,25 @@ TEST(USIConversion, USIToMove) {
   move.from = A9;
   move.to = A8;
   move.promotion = 0;
-  ASSERT_TRUE(moveEqual(move,USIToMove("9a8a")));
+  ASSERT_TRUE(moveEqual(move,USIToMove("9a8a", false)));
   move.from = C1;
   move.to = G9;
   move.promotion = 1;
-  ASSERT_TRUE(moveEqual(move,USIToMove("1c9g+")));
+  ASSERT_TRUE(moveEqual(move,USIToMove("1c9g+", false)));
   move.from = B2;
   move.to = I6;
   move.promotion = 0;
-  ASSERT_TRUE(moveEqual(move,USIToMove("2b6i")));
+  ASSERT_TRUE(moveEqual(move,USIToMove("2b6i", false)));
   move.from = I1;
   move.to = A1;
   move.promotion = 1;
-  ASSERT_TRUE(moveEqual(move,USIToMove("1i1a+")));
+  ASSERT_TRUE(moveEqual(move,USIToMove("1i1a+", false)));
+  move.from = WHITE_LANCE_DROP;
+  move.to = B5;
+  move.promotion = 0;
+  ASSERT_TRUE(moveEqual(move,USIToMove("L*5b", true)));
+  move.from = BLACK_LANCE_DROP;
+  move.to = B5;
+  move.promotion = 0;
+  ASSERT_TRUE(moveEqual(move,USIToMove("L*5b", false)));
 }
