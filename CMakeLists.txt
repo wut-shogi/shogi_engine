@@ -33,16 +33,10 @@ else()
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-# handle linking shared libraries on Windows
-if(MSVC)
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-    #set(BUILD_SHARED_LIBS TRUE)
-endif()
-
 include_directories(${CMAKE_BINARY_DIR})
 
-#set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-#set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 #set(GTEST_CREATE_SHARED_LIBRARY ON)
 #set(GTEST_LINKED_AS_SHARED_LIBRARY ON)
 
