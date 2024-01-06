@@ -3,11 +3,6 @@
 #include "lookUpTables.h"
 namespace shogi {
 namespace engine {
-//////////////////////////
-// W pinned zapisujesz spinowane i pinuj�ce (potem to si� da odzdzieli�
-// kolorami). Dla spinowanych figur ich ruchy to ruch & odpowiedni slajd od
-// kr�la (np file dla pionk�w) & pinuj�ce
-// Teoretycznie zosta�o tylko generatemoves do przerobienia
 RUNTYPE void getWhitePiecesInfo(const Board& board,
                                 Bitboard& outPinned,
                                 Bitboard& outValidMoves,

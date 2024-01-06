@@ -1,3 +1,4 @@
+#include "MoveGen.h"
 #include "evaluation.h"
 
 namespace shogi {
@@ -91,9 +92,6 @@ RUNTYPE int16_t evaluate(const Board& board, bool isWhite) {
                  PieceValue::PROMOTED_ROOK;
   whitePoints += board.inHand.pieceNumber.WhiteRook * PieceValue::IN_HAND_ROOK;
 
-  pieces = board[BB::Type::ALL_WHITE];
-  whitePoints += pieces[MID] * 10 + pieces[BOTTOM] * 20;
-
   // Black
   // Pawns
   pieces = board[BB::Type::PAWN] & board[BB::Type::ALL_BLACK] &
@@ -180,8 +178,31 @@ RUNTYPE int16_t evaluate(const Board& board, bool isWhite) {
                  PieceValue::PROMOTED_ROOK;
   blackPoints += board.inHand.pieceNumber.BlackRook * PieceValue::IN_HAND_ROOK;
 
-  pieces = board[BB::Type::ALL_BLACK];
-  whitePoints += pieces[MID] * 10 + pieces[TOP] * 20;
+  pieces = board[BB::Type::ALL_WHITE] & ~board[BB::Type::KING];
+  whitePoints += popcount(pieces[MID]) + popcount(pieces[BOTTOM]) -
+                 popcount(pieces[TOP]) - popcount(pieces[TOP] & TOP_RANK) * 5;
+
+  pieces = board[BB::Type::ALL_BLACK] & ~board[BB::Type::KING];
+  blackPoints += popcount(pieces[MID]) + popcount(pieces[TOP]) -
+                 popcount(pieces[BOTTOM]) -
+                 popcount(pieces[BOTTOM] & BOTTOM_RANK) * 5;
+
+  Bitboard pinned, attackedByEnemy, validMoves;
+  getWhitePiecesInfo(board, pinned, validMoves, attackedByEnemy);
+  whitePoints -= (popcount(pinned[TOP]) + popcount(pinned[MID]) +
+                  popcount(pinned[BOTTOM])) *
+                 10;
+  whitePoints += (popcount(validMoves[TOP]) + popcount(validMoves[MID]) +
+                  popcount(validMoves[BOTTOM])) *
+                 5;
+
+  getBlackPiecesInfo(board, pinned, validMoves, attackedByEnemy);
+  blackPoints -= (popcount(pinned[TOP]) + popcount(pinned[MID]) +
+                  popcount(pinned[BOTTOM])) *
+                 10;
+  blackPoints += (popcount(validMoves[TOP]) + popcount(validMoves[MID]) +
+                  popcount(validMoves[BOTTOM])) *
+                 5;
 
   int16_t score = whitePoints - blackPoints;
   return score;
