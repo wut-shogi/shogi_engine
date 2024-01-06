@@ -1,13 +1,13 @@
-#include "LookUpTables.h"
 #include "MoveGen.h"
 #include "MoveGenHelpers.h"
+#include "lookUpTables.h"
 namespace shogi {
 namespace engine {
 //////////////////////////
-// W pinned zapisujesz spinowane i pinuj¹ce (potem to siê da odzdzieliæ
+// W pinned zapisujesz spinowane i pinujï¿½ce (potem to siï¿½ da odzdzieliï¿½
 // kolorami). Dla spinowanych figur ich ruchy to ruch & odpowiedni slajd od
-// króla (np file dla pionków) & pinuj¹ce
-// Teoretycznie zosta³o tylko generatemoves do przerobienia
+// krï¿½la (np file dla pionkï¿½w) & pinujï¿½ce
+// Teoretycznie zostaï¿½o tylko generatemoves do przerobienia
 RUNTYPE void getWhitePiecesInfo(const Board& board,
                                 Bitboard& outPinned,
                                 Bitboard& outValidMoves,
@@ -39,8 +39,8 @@ RUNTYPE void getWhitePiecesInfo(const Board& board,
   enemyCheckingPieces |= moveS(moveSE(king) | moveSW(king)) & pieces;
   attackedByEnemy |= moveN(moveNE(pieces) | moveNW(pieces));
   // Silver generals
-  pieces = board[BB::Type::SILVER_GENERAL] &
-           board[BB::Type::ALL_BLACK] & ~board[BB::Type::PROMOTED];
+  pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_BLACK] &
+           ~board[BB::Type::PROMOTED];
   enemyCheckingPieces |= (moveSE(king) | moveS(king) | moveSW(king) |
                           moveNE(king) | moveNW(king)) &
                          pieces;
@@ -314,8 +314,8 @@ RUNTYPE void getBlackPiecesInfo(const Board& board,
   enemyCheckingPieces |= moveN(moveNE(king) | moveNW(king)) & pieces;
   attackedByEnemy |= moveS(moveSE(pieces) | moveSW(pieces));
   // Silver generals
-  pieces = board[BB::Type::SILVER_GENERAL] &
-           board[BB::Type::ALL_WHITE] & ~board[BB::Type::PROMOTED];
+  pieces = board[BB::Type::SILVER_GENERAL] & board[BB::Type::ALL_WHITE] &
+           ~board[BB::Type::PROMOTED];
   enemyCheckingPieces |= (moveNE(king) | moveN(king) | moveNW(king) |
                           moveSE(king) | moveSW(king)) &
                          pieces;

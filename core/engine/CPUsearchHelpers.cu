@@ -1,8 +1,7 @@
 #include "CPUsearchHelpers.h"
-#include "moveGenHelpers.h"
+#include "MoveGenHelpers.h"
 namespace shogi {
 namespace engine {
-namespace CPU {
-}  // namespace CPU
+namespace CPU {}  // namespace CPU
 }  // namespace engine
 }  // namespace shogi

@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include "GPUsearchHelpers.h"
+#include "MoveGen.h"
+#include "MoveGenHelpers.h"
 #include "evaluation.h"
-#include "moveGen.h"
-#include "moveGenHelpers.h"
 
 #ifdef __CUDACC__
+#include <device_launch_parameters.h>
 #include <thrust/execution_policy.h>
 #include <thrust/scan.h>
-#include <device_launch_parameters.h>
 #endif
 
 namespace shogi {

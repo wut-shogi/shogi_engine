@@ -37,6 +37,8 @@ include_directories(${CMAKE_BINARY_DIR})
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+#set(GTEST_CREATE_SHARED_LIBRARY ON)
+#set(GTEST_LINKED_AS_SHARED_LIBRARY ON)
 
 add_subdirectory(core)
 add_subdirectory(app)
