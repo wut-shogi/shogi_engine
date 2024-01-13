@@ -11,8 +11,11 @@ namespace engine {
 void test() {
   Board startingBoard = Boards::STARTING_BOARD();
   bool isWhite = false;
-  GameSimulator simulator(5, 3000, SEARCH::GPU);
+  GameSimulator simulator(5, 0, SEARCH::GPU);
   simulator.Run();
+  /*SEARCH::init();
+  SEARCH::perftGPU<true>(startingBoard, 6, isWhite);*/
+  SEARCH::cleanup();
 }
 
 }  // namespace engine

@@ -1,6 +1,11 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <mutex>
+#include <queue>
+#include <stack>
+#include <thread>
+#include <vector>
 #include "CPUsearchHelpers.h"
 #include "GPUsearchHelpers.h"
 #include "USIconverter.h"
@@ -16,38 +21,154 @@ namespace shogi {
 namespace engine {
 namespace SEARCH {
 
+#ifdef __CUDACC__
+class DevicePool {
+ public:
+  DevicePool(size_t numberOfDevices) : stop(false) {
+    for (size_t i = 0; i < numberOfDevices; ++i) {
+      devicePool.push(i);
+    }
+  }
+
+  template <typename Result, typename Function, typename... Args>
+  std::future<Result> executeWhenDeviceAvaliable(Function&& func,
+                                                 Args&&... args) {
+    return std::async(
+        std::launch::async,
+        [this, func = std::forward<Function>(func),
+         argsTuple = std::make_tuple(std::forward<Args>(args)...)]() mutable {
+          int deviceId = getDeviceIdFromPool();
+          cudaSetDevice(deviceId);
+          Result result = std::apply(
+              [func, deviceId](auto&&... funcArgs) mutable {
+                return func(deviceId,
+                            std::forward<decltype(funcArgs)>(funcArgs)...);
+              },
+              argsTuple);
+          releaseDeviceIdToPool(deviceId);
+          return result;
+        });
+  }
+
+ private:
+  std::mutex deviceMutex;
+  std::condition_variable condition;
+  bool stop;
+
+  std::stack<int> devicePool;
+
+  int getDeviceIdFromPool() {
+    std::unique_lock<std::mutex> lock(deviceMutex);
+    // Wait until a device Id is available
+    condition.wait(lock, [this] { return !devicePool.empty(); });
+    // Acquire an available device Id
+    int deviceId = devicePool.top();
+    devicePool.pop();
+    return deviceId;
+  }
+
+  void releaseDeviceIdToPool(int deviceId) {
+    {
+      std::lock_guard<std::mutex> lock(deviceMutex);
+      devicePool.push(deviceId);
+    }
+    condition.notify_all();
+
+  }
+};
+#endif
+
+struct DeviceData {
+  uint8_t* buffer = nullptr;
+  uint32_t bufferSize = 0;
+};
+
 std::atomic<bool> terminateSearch(false);
 
-uint8_t* d_Buffer;
-uint32_t d_BufferSize = 0;
+bool afterInit = false;
+
+int numberOfDevices = 1;
+
+std::vector<DeviceData> deviceData(numberOfDevices);
+
+bool initDevice(int deviceId) {
+#ifdef __CUDACC__
+  LookUpTables::GPU::init();
+  size_t total = 0, free = 0;
+  cudaMemGetInfo(&free, &total);
+  if (free == 0)
+    return false;
+  deviceData[deviceId].bufferSize = (free / 4) * 4;
+  cudaError_t error = cudaMalloc((void**)&(deviceData[deviceId].buffer),
+                                 deviceData[deviceId].bufferSize);
+  if (error != cudaSuccess)
+    return false;
+#endif
+  return true;
+}
 
 bool init() {
+  bool finalResult = true;
   try {
     LookUpTables::CPU::init();
 #ifdef __CUDACC__
-    LookUpTables::GPU::init();
-    size_t total = 0, free = 0;
-    cudaMemGetInfo(&free, &total);
-    if (free == 0)
-      return false;
-    d_BufferSize = (free / 4) * 4;
-    cudaError_t error = cudaMalloc((void**)&d_Buffer, d_BufferSize);
-    if (error != cudaSuccess)
-      return false;
+    bool finalResult = true;
+    DevicePool devicePool(numberOfDevices);
+    std::vector<std::future<bool>> futures;
+    for (int device = 0; device < numberOfDevices; device++) {
+      futures.emplace_back(devicePool.executeWhenDeviceAvaliable<bool>(initDevice));
+    }
+    for (auto& future : futures) {
+      future.wait();
+      bool result = future.get();
+      finalResult &= result;
+    }
 #endif
   } catch (...) {
     return false;
   }
+  afterInit = finalResult;
+  return finalResult;
+}
+
+bool cleanupDevice(int deviceId) {
+#ifdef __CUDACC__
+  LookUpTables::GPU::cleanup();
+  if (deviceData[deviceId].bufferSize > 0)
+    cudaFree(deviceData[deviceId].buffer);
+#endif
   return true;
 }
 
 void cleanup() {
   LookUpTables::CPU::cleanup();
 #ifdef __CUDACC__
-  LookUpTables::GPU::cleanup();
-  if (d_BufferSize > 0)
-    cudaFree(d_Buffer);
+  DevicePool devicePool(numberOfDevices);
+  std::vector<std::future<bool>> futures;
+  for (int device = 0; device < numberOfDevices; device++) {
+    futures.emplace_back(
+        devicePool.executeWhenDeviceAvaliable<bool>(cleanupDevice));
+  }
+  for (auto& future : futures) {
+    future.wait();
+  }
 #endif
+  afterInit = false;
+}
+
+void setDeviceCount(int numberOfDevicesUsed) {
+#ifdef __CUDACC__
+  if (afterInit) {
+    printf("Cannot change number of devices after initialization\n");
+  }
+  cudaGetDeviceCount(&numberOfDevices);
+  numberOfDevices = std::min(numberOfDevices, numberOfDevicesUsed);
+  deviceData.resize(numberOfDevices);
+  if (numberOfDevices != numberOfDevicesUsed) {
+    printf("Cannot use %d devices. Using %d devices instead\n",
+           numberOfDevicesUsed, numberOfDevices);
+  }
+#endif  //  __CUDACC__
 }
 
 void IterativeDeepeningSearch(Move& outBestMove,
@@ -171,13 +292,33 @@ uint64_t countMovesCPU(Board& board, uint16_t depth, bool isWhite) {
   }
   return moveCount;
 }
-
+// #define __CUDACC__
 #ifdef __CUDACC__
-GPUBuffer::GPUBuffer(const Board& startBoard) {
-  d_startBoard = (Board*)d_Buffer;
+template <typename T>
+class ThreadSafeVector {
+ public:
+  ThreadSafeVector(size_t size) { values = std::vector<T>(size, 0); }
+  T& operator[](int idx) {
+    std::lock_guard<std::mutex> lock(valuesMutex);
+    return values[idx];
+  }
+
+  size_t size() { return values.size(); }
+
+ private:
+  std::vector<T> values;
+  std::mutex valuesMutex;
+};
+
+GPUBuffer::GPUBuffer(const Board& startBoard,
+                     uint8_t* d_buffer,
+                     uint32_t size) {
+  buffer = d_buffer;
+  bufferSize = size;
+  d_startBoard = (Board*)buffer;
   cudaMemcpy(d_startBoard, &startBoard, sizeof(Board), cudaMemcpyHostToDevice);
-  freeBegin = d_Buffer + sizeof(Board);
-  freeEnd = d_Buffer + d_BufferSize;
+  freeBegin = buffer + sizeof(Board);
+  freeEnd = buffer + bufferSize;
 }
 
 Board* GPUBuffer::GetStartBoardPtr() {
@@ -213,33 +354,35 @@ bool GPUBuffer::ReserveBitboardsSpace(uint32_t size,
   return freeBegin < freeEnd;
 }
 
-void GPUBuffer::FreeBitboardsSpace(uint32_t size) {
-  freeEnd = d_Buffer + d_BufferSize;
+void GPUBuffer::FreeBitboardsSpace() {
+  freeEnd = buffer + bufferSize;
 }
 
 static const uint32_t maxProcessedSize = 5000;
 
 // Converts moves to values
-void minMaxGPU(Move* moves,
-               uint32_t size,
-               bool isWhite,
-               uint16_t depth,
-               uint16_t maxDepth,
-               GPUBuffer& gpuBuffer,
-               std::vector<uint32_t>& numberOfMovesPerDepth) {
+int minMaxGPU(Move* moves,
+              uint32_t size,
+              bool isWhite,
+              uint16_t depth,
+              uint16_t maxDepth,
+              GPUBuffer& gpuBuffer,
+              ThreadSafeVector<uint64_t>& numberOfMovesPerDepth) {
   if (terminateSearch)
-    return;
+    return 0;
   if (depth == maxDepth) {
     // Evaluate moves
     GPU::evaluateBoards(size, isWhite, depth, gpuBuffer.GetStartBoardPtr(),
                         moves, (int16_t*)moves);
     numberOfMovesPerDepth[depth - 1] += size;
-    return;
+    return 0;
   }
   uint32_t processed = 0;
   uint32_t* offsets;
   uint32_t* bitboards;
   uint32_t* bestIndex;
+
+  int result = 0;
   // Process by chunks
   while (processed < size) {
     uint32_t sizeToProcess = std::min(size - processed, maxProcessedSize);
@@ -248,13 +391,17 @@ void minMaxGPU(Move* moves,
       printf("Err in ReserveOffsetsSpace\n");
     if (!gpuBuffer.ReserveBitboardsSpace(sizeToProcess, bitboards))
       printf("Err in ReserveBitboardsSpace\n");
-    isWhite ? GPU::countWhiteMoves(sizeToProcess, depth,
-                                   gpuBuffer.GetStartBoardPtr(), moves, size,
-                                   processed, offsets, bitboards)
-            : GPU::countBlackMoves(sizeToProcess, depth,
-                                   gpuBuffer.GetStartBoardPtr(), moves, size,
-                                   processed, offsets, bitboards);
-    GPU::prefixSum(offsets, sizeToProcess + 1);
+    result = isWhite ? GPU::countWhiteMoves(sizeToProcess, depth,
+                                            gpuBuffer.GetStartBoardPtr(), moves,
+                                            size, processed, offsets, bitboards)
+                     : GPU::countBlackMoves(
+                           sizeToProcess, depth, gpuBuffer.GetStartBoardPtr(),
+                           moves, size, processed, offsets, bitboards);
+    if (result)
+      return result;
+    result = GPU::prefixSum(offsets, sizeToProcess + 1);
+    if (result)
+      return result;
     uint32_t nextLayerSize = 0;
     cudaMemcpy(&nextLayerSize, offsets + sizeToProcess, sizeof(uint32_t),
                cudaMemcpyDeviceToHost);
@@ -263,51 +410,91 @@ void minMaxGPU(Move* moves,
 
     if (!gpuBuffer.ReserveMovesSpace(nextLayerSize, depth + 1, newMoves))
       printf("Err in ReserveMovesSpace\n");
-    isWhite ? GPU::generateWhiteMoves(sizeToProcess, depth,
-                                      gpuBuffer.GetStartBoardPtr(), moves, size,
-                                      processed, offsets, bitboards, newMoves)
-            : GPU::generateBlackMoves(sizeToProcess, depth,
-                                      gpuBuffer.GetStartBoardPtr(), moves, size,
-                                      processed, offsets, bitboards, newMoves);
-    gpuBuffer.FreeBitboardsSpace(sizeToProcess);
+    result = isWhite
+                 ? GPU::generateWhiteMoves(
+                       sizeToProcess, depth, gpuBuffer.GetStartBoardPtr(),
+                       moves, size, processed, offsets, bitboards, newMoves)
+                 : GPU::generateBlackMoves(
+                       sizeToProcess, depth, gpuBuffer.GetStartBoardPtr(),
+                       moves, size, processed, offsets, bitboards, newMoves);
+    if (result)
+      return result;
+    gpuBuffer.FreeBitboardsSpace();
     // minmaxGPU(newLayer)
-    minMaxGPU(newMoves, nextLayerSize, !isWhite, depth + 1, maxDepth, gpuBuffer,
-              numberOfMovesPerDepth);
+    result = minMaxGPU(newMoves, nextLayerSize, !isWhite, depth + 1, maxDepth,
+                       gpuBuffer, numberOfMovesPerDepth);
+    if (result)
+      return result;
     bestIndex = offsets;
     // Gather values from new layer
-    isWhite ? GPU::gatherValuesMax(sizeToProcess, depth, offsets,
-                                   (int16_t*)newMoves,
-                                   (int16_t*)(moves + processed), bestIndex)
-            : GPU::gatherValuesMin(sizeToProcess, depth, offsets,
-                                   (int16_t*)newMoves,
-                                   (int16_t*)(moves + processed), bestIndex);
+    result = isWhite ? GPU::gatherValuesMax(
+                           sizeToProcess, depth, offsets, (int16_t*)newMoves,
+                           (int16_t*)(moves + processed), bestIndex)
+                     : GPU::gatherValuesMin(
+                           sizeToProcess, depth, offsets, (int16_t*)newMoves,
+                           (int16_t*)(moves + processed), bestIndex);
+    if (result)
+      return result;
     gpuBuffer.FreeMovesSpace(newMoves);
     gpuBuffer.FreeOffsetsSpace(offsets);
     processed += sizeToProcess;
   }
   numberOfMovesPerDepth[depth - 1] += size;
+  return 0;
+}
+
+int findMoveValueDevice(int deviceId,
+                        uint32_t size,
+                        Move* inMoves,
+                        int16_t* outValues,
+                        const Board& board,
+                        bool isWhite,
+                        uint16_t maxDepth,
+                        ThreadSafeVector<uint64_t>& numberOfMovesPerDepth) {
+  cudaSetDevice(deviceId);
+  GPUBuffer gpuBuffer(board, deviceData[deviceId].buffer,
+                      deviceData[deviceId].bufferSize);
+  Move* d_moves;
+  gpuBuffer.ReserveMovesSpace(size, 1, d_moves);
+  cudaMemcpy(d_moves, inMoves, size * sizeof(Move), cudaMemcpyHostToDevice);
+  int result = minMaxGPU(d_moves, size, !isWhite, 1, maxDepth, gpuBuffer,
+                         numberOfMovesPerDepth);
+  if (result)
+    return result;
+  cudaMemcpy(outValues, d_moves, size * sizeof(int16_t),
+             cudaMemcpyDeviceToHost);
+  return 0;
 }
 
 Move GetBestMoveGPU(const Board& board, bool isWhite, uint16_t maxDepth) {
   auto start = std::chrono::high_resolution_clock::now();
-  std::vector<uint32_t> numberOfMovesPerDepth(maxDepth, 0);
-  GPUBuffer gpuBuffer(board);
+  ThreadSafeVector<uint64_t> numberOfMovesPerDepth(maxDepth);
   CPU::MoveList rootMoves(board, isWhite);
   if (rootMoves.size() == 0) {
     return Move{0, 0, 0};
   }
   Move bestMove = *rootMoves.begin();
-  Move* d_moves;
-  gpuBuffer.ReserveMovesSpace(rootMoves.size(), 1, d_moves);
-  cudaMemcpy(d_moves, rootMoves.begin(), rootMoves.size() * sizeof(Move),
-             cudaMemcpyHostToDevice);
-  minMaxGPU(d_moves, rootMoves.size(), !isWhite, 1, maxDepth, gpuBuffer,
-            numberOfMovesPerDepth);
+  std::vector<int16_t> h_values(rootMoves.size());
+  uint32_t avgSize = rootMoves.size() / numberOfDevices;
+  uint32_t processedMoves = 0;
+  std::vector<std::future<int>> futures;
+  for (int device = 0; device < numberOfDevices; device++) {
+    uint32_t size = std::min(avgSize, rootMoves.size() - processedMoves);
+    futures.emplace_back(std::async(
+        std::launch::async, findMoveValueDevice, device, size,
+        rootMoves.data() + processedMoves, h_values.data() + processedMoves,
+        std::cref(board), isWhite, maxDepth, std::ref(numberOfMovesPerDepth)));
+    processedMoves += size;
+  }
+  for (auto& future : futures) {
+    future.wait();
+    int result = future.get();
+    if (result)
+      return Move{0, 0, 0};
+  }
   if (terminateSearch)
     return bestMove;
-  std::vector<int16_t> h_values(rootMoves.size());
-  cudaMemcpy(h_values.data(), d_moves, rootMoves.size() * sizeof(int16_t),
-             cudaMemcpyDeviceToHost);
+
   size_t bestValueIdx =
       isWhite ? std::max_element(h_values.begin(), h_values.end()) -
                     h_values.begin()
@@ -328,21 +515,18 @@ Move GetBestMoveGPU(const Board& board, bool isWhite, uint16_t maxDepth) {
   return bestMove;
 }
 
-uint64_t countMovesGPU(Move* moves,
-                       uint32_t size,
-                       bool isWhite,
-                       uint16_t depth,
-                       uint16_t maxDepth,
-                       GPUBuffer& gpuBuffer) {
-  if (depth == maxDepth) {
+uint64_t countMovesDevice(Move* moves,
+                          uint32_t size,
+                          bool isWhite,
+                          uint16_t depth,
+                          uint16_t maxDepth,
+                          GPUBuffer& gpuBuffer) {
+  if (depth == maxDepth)
     return size;
-  }
   uint32_t processed = 0;
   uint32_t* offsets;
   uint32_t* bitboards;
   uint64_t numberOfMoves = 0;
-  if (size == 0)
-    size = 1;
   // Process by chunks
   while (processed < size) {
     uint32_t sizeToProcess = std::min(size - processed, maxProcessedSize);
@@ -372,15 +556,62 @@ uint64_t countMovesGPU(Move* moves,
             : GPU::generateBlackMoves(sizeToProcess, depth,
                                       gpuBuffer.GetStartBoardPtr(), moves, size,
                                       processed, offsets, bitboards, newMoves);
-    gpuBuffer.FreeBitboardsSpace(sizeToProcess);
+    gpuBuffer.FreeBitboardsSpace();
     // minmaxGPU(newLayer)
-    numberOfMoves += countMovesGPU(newMoves, nextLayerSize, !isWhite, depth + 1,
-                                   maxDepth, gpuBuffer);
+    numberOfMoves += countMovesDevice(newMoves, nextLayerSize, !isWhite,
+                                      depth + 1, maxDepth, gpuBuffer);
     gpuBuffer.FreeMovesSpace(newMoves);
     gpuBuffer.FreeOffsetsSpace(offsets);
     processed += sizeToProcess;
   }
   return numberOfMoves;
+}
+
+uint64_t launchCountMovesDevice(int deviceId,
+                                Board& board,
+                                Move move,
+                                bool isWhite,
+                                uint16_t maxDepth) {
+  GPUBuffer gpuBuffer(board, deviceData[deviceId].buffer,
+                      deviceData[deviceId].bufferSize);
+  Move* d_moves;
+  gpuBuffer.ReserveMovesSpace(1, 1, d_moves);
+  cudaMemcpy(d_moves, &move, sizeof(Move), cudaMemcpyHostToDevice);
+  uint64_t numberOfMoves =
+      countMovesDevice(d_moves, 1, isWhite, 1, maxDepth, gpuBuffer);
+  return numberOfMoves;
+}
+
+uint64_t countMovesGPU(bool Verbose, const Board& board, CPU::MoveList& moves,
+                       bool isWhite,
+                       uint16_t maxDepth) {
+  DevicePool devicePool(numberOfDevices);
+  std::vector<std::pair<int, std::future<uint64_t>>> futures;
+  uint64_t nodesSearched = 0;
+  for (int i = 0; i < moves.size(); i++) {
+    futures.emplace_back(i, devicePool.executeWhenDeviceAvaliable<uint64_t>(
+        launchCountMovesDevice, board, *(moves.data() + i), !isWhite, maxDepth));
+  }
+
+  while (!futures.empty()) {
+    auto it = futures.begin();
+    while (it != futures.end()) {
+      auto status = it->second.wait_for(std::chrono::milliseconds(0));
+      if (status == std::future_status::ready) {
+        uint64_t numberOfMoves = it->second.get();
+        int moveIdx = it->first;
+        if (Verbose)
+          std::cout << MoveToUSI(*(moves.data() + moveIdx)) << ": " << numberOfMoves
+                    << std::endl;
+        nodesSearched += numberOfMoves;
+        it = futures.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  return nodesSearched;
 }
 
 #endif
