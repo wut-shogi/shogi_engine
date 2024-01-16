@@ -92,6 +92,21 @@ uint64_t perftGPU(Board& board, uint16_t depth, bool isWhite = false) {
   return nodesSearched;
 }
 #endif
+template <bool Verbose = false>
+uint64_t perft(Board& board,
+               bool isWhite,
+               uint16_t depth,
+               SearchType searchType) {
+  if (searchType == GPU) {
+#ifdef __CUDACC__
+    return perftGPU<Verbose>(board, depth, isWhite);
+#else
+    return 0;
+#endif  // __CUDACC__
+  } else {
+    return perftCPU<Verbose>(board, depth, isWhite);
+  }
+}
 }  // namespace SEARCH
 }  // namespace engine
 }  // namespace shogi
