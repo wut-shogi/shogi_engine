@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <chrono>
 #include "Board.h"
 #include "CPUsearchHelpers.h"
 #include "USIconverter.h"
@@ -26,6 +27,7 @@ uint64_t countMovesCPU(Board& board, uint16_t depth, bool isWhite);
 
 template <bool Verbose = false>
 uint64_t perftCPU(const Board& board, uint16_t depth, bool isWhite = false) {
+  auto start = std::chrono::high_resolution_clock::now();
   CPU::MoveList moves = CPU::MoveList(board, isWhite);
   if (depth == 1) {
     for (int i = 0; i < moves.size(); i++) {
@@ -49,6 +51,10 @@ uint64_t perftCPU(const Board& board, uint16_t depth, bool isWhite = false) {
   }
   if constexpr (Verbose)
     std::cout << "Nodes searched: " << moveCount << std::endl;
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "Time: " << duration.count() << " ms" << std::endl;
   return moveCount;
 }
 
@@ -84,11 +90,16 @@ uint64_t countMovesGPU(bool Verbose,
 
 template <bool Verbose = false>
 uint64_t perftGPU(Board& board, uint16_t depth, bool isWhite = false) {
+  auto start = std::chrono::high_resolution_clock::now();
   GPUBuffer gpuBuffer(board, nullptr, 0);
   CPU::MoveList moves(board, isWhite);
   uint64_t nodesSearched = countMovesGPU(Verbose, board, moves, isWhite, depth);
   if constexpr (Verbose)
     std::cout << "Nodes searched: " << nodesSearched << std::endl;
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "Time: " << duration.count() << " ms" << std::endl;
   return nodesSearched;
 }
 #endif
