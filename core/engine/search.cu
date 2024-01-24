@@ -21,6 +21,15 @@ namespace engine {
 namespace SEARCH {
 
 #ifdef __CUDACC__
+class ThreadSafeLog {
+ public:
+    void WriteLine(const std::string& message) {
+    std::unique_lock<std::mutex> lock(logMutex);
+      std::cout << message << std::endl;
+  }
+ private:
+  std::mutex logMutex;
+};
 class DevicePool {
  public:
   DevicePool(size_t numberOfDevices) : stop(false) {
@@ -37,6 +46,8 @@ class DevicePool {
         [this, func = std::forward<Function>(func),
          argsTuple = std::make_tuple(std::forward<Args>(args)...)]() mutable {
           int deviceId = getDeviceIdFromPool();
+          logger.WriteLine("Starting thread with device Id: " +
+                                   std::to_string(deviceId));
           cudaSetDevice(deviceId);
           Result result = std::apply(
               [func, deviceId](auto&&... funcArgs) mutable {
@@ -44,6 +55,8 @@ class DevicePool {
                             std::forward<decltype(funcArgs)>(funcArgs)...);
               },
               argsTuple);
+          logger.WriteLine("Ending thread with device Id: " +
+                                   std::to_string(deviceId));
           releaseDeviceIdToPool(deviceId);
           return result;
         });
@@ -53,6 +66,7 @@ class DevicePool {
   std::mutex deviceMutex;
   std::condition_variable condition;
   bool stop;
+  ThreadSafeLog logger;
 
   std::stack<int> devicePool;
 
@@ -72,7 +86,6 @@ class DevicePool {
       devicePool.push(deviceId);
     }
     condition.notify_all();
-
   }
 };
 #endif
@@ -115,7 +128,8 @@ bool init() {
     DevicePool devicePool(numberOfDevices);
     std::vector<std::future<bool>> futures;
     for (int device = 0; device < numberOfDevices; device++) {
-      futures.emplace_back(devicePool.executeWhenDeviceAvaliable<bool>(initDevice));
+      futures.emplace_back(
+          devicePool.executeWhenDeviceAvaliable<bool>(initDevice));
     }
     for (auto& future : futures) {
       future.wait();
@@ -160,12 +174,16 @@ void setDeviceCount(int numberOfDevicesUsed) {
   if (afterInit) {
     printf("Cannot change number of devices after initialization\n");
   }
-  cudaGetDeviceCount(&numberOfDevices);
-  numberOfDevices = std::min(numberOfDevices, numberOfDevicesUsed);
+  int numberOfAllDevices = 1;
+  cudaGetDeviceCount(&numberOfAllDevices);
+  numberOfDevices = std::min(numberOfAllDevices, numberOfDevicesUsed);
   deviceData.resize(numberOfDevices);
   if (numberOfDevices != numberOfDevicesUsed) {
     printf("Cannot use %d devices. Using %d devices instead\n",
            numberOfDevicesUsed, numberOfDevices);
+  } else {
+    printf("Using %d GPUs out of %d avaliable\n", numberOfDevices,
+           numberOfAllDevices);
   }
 #endif  //  __CUDACC__
 }
@@ -581,7 +599,9 @@ uint64_t launchCountMovesDevice(int deviceId,
   return numberOfMoves;
 }
 
-uint64_t countMovesGPU(bool Verbose, const Board& board, CPU::MoveList& moves,
+uint64_t countMovesGPU(bool Verbose,
+                       const Board& board,
+                       CPU::MoveList& moves,
                        bool isWhite,
                        uint16_t maxDepth) {
   DevicePool devicePool(numberOfDevices);
@@ -589,9 +609,9 @@ uint64_t countMovesGPU(bool Verbose, const Board& board, CPU::MoveList& moves,
   uint64_t nodesSearched = 0;
   for (int i = 0; i < moves.size(); i++) {
     futures.emplace_back(i, devicePool.executeWhenDeviceAvaliable<uint64_t>(
-        launchCountMovesDevice, board, *(moves.data() + i), !isWhite, maxDepth));
+                                launchCountMovesDevice, board,
+                                *(moves.data() + i), !isWhite, maxDepth));
   }
-
   while (!futures.empty()) {
     auto it = futures.begin();
     while (it != futures.end()) {
@@ -600,8 +620,8 @@ uint64_t countMovesGPU(bool Verbose, const Board& board, CPU::MoveList& moves,
         uint64_t numberOfMoves = it->second.get();
         int moveIdx = it->first;
         if (Verbose)
-          std::cout << MoveToUSI(*(moves.data() + moveIdx)) << ": " << numberOfMoves
-                    << std::endl;
+          std::cout << MoveToUSI(*(moves.data() + moveIdx)) << ": "
+                    << numberOfMoves << std::endl;
         nodesSearched += numberOfMoves;
         it = futures.erase(it);
       } else {
