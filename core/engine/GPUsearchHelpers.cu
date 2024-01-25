@@ -23,8 +23,10 @@ inline void gpuAssert(cudaError_t code,
                       const char* file,
                       int line,
                       bool abort = true) {
+  int deviceId;
+  cudaGetDevice(&deviceId);
   if (code != cudaSuccess) {
-    fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file,
+    fprintf(stderr, "GPUassert on device: %d %s %s %d\n", deviceId, cudaGetErrorString(code), file,
             line);
     if (abort)
       exit(code);

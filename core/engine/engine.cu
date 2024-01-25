@@ -24,24 +24,32 @@ void Engine::SetGPUCount(int gpuCount) {
 
 void Engine::perftGPU() {
   shogi::engine::SEARCH::setDeviceCount(gpuCount);
-  shogi::engine::SEARCH::init();
+  if (!shogi::engine::SEARCH::init()) {
+    std::cerr << "Failed to initialize data" << std::endl;
+  }
   shogi::engine::SEARCH::perft<true>(board, isWhite, depth, shogi::engine::SEARCH::GPU);
   shogi::engine::SEARCH::cleanup();
 }
 void Engine::perftCPU() {
-  shogi::engine::SEARCH::init();
+  if (!shogi::engine::SEARCH::init()) {
+    std::cerr << "Failed to initialize data" << std::endl;
+  }
   shogi::engine::SEARCH::perft<true>(board, isWhite, depth, shogi::engine::SEARCH::CPU);
   shogi::engine::SEARCH::cleanup();
 }
 void Engine::getBestMoveGPU() {
   shogi::engine::SEARCH::setDeviceCount(gpuCount);
-  shogi::engine::SEARCH::init();
+  if (!shogi::engine::SEARCH::init()) {
+    std::cerr << "Failed to initialize data" << std::endl;
+  }
   shogi::engine::SEARCH::GetBestMove(board, isWhite, depth, time,
                                      shogi::engine::SEARCH::GPU);
   shogi::engine::SEARCH::cleanup();
 }
 void Engine::getBestMoveCPU() {
-  shogi::engine::SEARCH::init();
+  if (!shogi::engine::SEARCH::init()) {
+    std::cerr << "Failed to initialize data" << std::endl;
+  }
   shogi::engine::SEARCH::GetBestMove(board, isWhite, depth, time,
                                      shogi::engine::SEARCH::CPU);
   shogi::engine::SEARCH::cleanup();
