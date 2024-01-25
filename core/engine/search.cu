@@ -150,6 +150,7 @@ bool init() {
 
 bool cleanupDevice(int deviceId) {
 #ifdef __CUDACC__
+  printf("cleanupDevice on %d started\n", deviceId);
   LookUpTables::GPU::cleanup();
   if (deviceData[deviceId].bufferSize > 0)
     cudaFree(deviceData[deviceId].buffer);
@@ -158,7 +159,6 @@ bool cleanupDevice(int deviceId) {
 }
 
 void cleanup() {
-  LookUpTables::CPU::cleanup();
 #ifdef __CUDACC__
   DevicePool devicePool(numberOfDevices);
   std::vector<std::future<bool>> futures;
@@ -170,6 +170,7 @@ void cleanup() {
     future.wait();
   }
 #endif
+  LookUpTables::CPU::cleanup();
   afterInit = false;
 }
 
