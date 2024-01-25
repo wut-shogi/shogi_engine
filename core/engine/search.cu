@@ -47,8 +47,9 @@ class DevicePool {
         [this, func = std::forward<Function>(func),
          argsTuple = std::make_tuple(std::forward<Args>(args)...)]() mutable {
           int deviceId = getDeviceIdFromPool();
+          auto start = std::chrono::high_resolution_clock::now();
           logger.WriteLine("Starting thread with device Id: " +
-                           std::to_string(deviceId));
+                           std::to_string(deviceId) + ", at: " + std::to_string(start.time_since_epoch().count()));
           cudaSetDevice(deviceId);
           Result result = std::apply(
               [func, deviceId](auto&&... funcArgs) mutable {
@@ -56,8 +57,12 @@ class DevicePool {
                             std::forward<decltype(funcArgs)>(funcArgs)...);
               },
               argsTuple);
-          logger.WriteLine("Ending thread with device Id: " +
-                           std::to_string(deviceId));
+          auto stop = std::chrono::high_resolution_clock::now();
+          auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+              stop - start);
+          logger.WriteLine(
+              "Ending thread with device Id: " + std::to_string(deviceId) +
+              ", duration: " + std::to_string(duration.count()) + "");
           releaseDeviceIdToPool(deviceId);
           return result;
         });
@@ -374,7 +379,7 @@ void GPUBuffer::FreeBitboardsSpace() {
   freeEnd = buffer + bufferSize;
 }
 
-static const uint32_t maxProcessedSize = 5000;
+static const uint32_t maxProcessedSize = 50000;
 
 // Converts moves to values
 int minMaxGPU(Move* moves,
