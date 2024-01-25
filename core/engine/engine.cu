@@ -5,7 +5,7 @@ shogi::engine::Board Engine::board =
     shogi::engine::Boards::STARTING_BOARD();
 bool Engine::isWhite = false;
 uint16_t Engine::depth = 5;
-uint32_t Engine::time = 3000;
+uint32_t Engine::time = 0;
 int Engine::gpuCount = 1;
 
 void Engine::SetDepth(uint16_t depth) {

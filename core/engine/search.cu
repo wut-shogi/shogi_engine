@@ -23,10 +23,11 @@ namespace SEARCH {
 #ifdef __CUDACC__
 class ThreadSafeLog {
  public:
-    void WriteLine(const std::string& message) {
+  void WriteLine(const std::string& message) {
     std::unique_lock<std::mutex> lock(logMutex);
-      std::cout << message << std::endl;
+    std::cout << message << std::endl;
   }
+
  private:
   std::mutex logMutex;
 };
@@ -47,7 +48,7 @@ class DevicePool {
          argsTuple = std::make_tuple(std::forward<Args>(args)...)]() mutable {
           int deviceId = getDeviceIdFromPool();
           logger.WriteLine("Starting thread with device Id: " +
-                                   std::to_string(deviceId));
+                           std::to_string(deviceId));
           cudaSetDevice(deviceId);
           Result result = std::apply(
               [func, deviceId](auto&&... funcArgs) mutable {
@@ -56,7 +57,7 @@ class DevicePool {
               },
               argsTuple);
           logger.WriteLine("Ending thread with device Id: " +
-                                   std::to_string(deviceId));
+                           std::to_string(deviceId));
           releaseDeviceIdToPool(deviceId);
           return result;
         });
@@ -81,11 +82,9 @@ class DevicePool {
   }
 
   void releaseDeviceIdToPool(int deviceId) {
-    {
-      std::lock_guard<std::mutex> lock(deviceMutex);
-      devicePool.push(deviceId);
-    }
-    condition.notify_all();
+    std::lock_guard<std::mutex> lock(deviceMutex);
+    devicePool.push(deviceId);
+    condition.notify_one();
   }
 };
 #endif
@@ -574,7 +573,7 @@ uint64_t countMovesDevice(Move* moves,
                                       gpuBuffer.GetStartBoardPtr(), moves, size,
                                       processed, offsets, bitboards, newMoves);
     gpuBuffer.FreeBitboardsSpace();
-    // minmaxGPU(newLayer)
+
     numberOfMoves += countMovesDevice(newMoves, nextLayerSize, !isWhite,
                                       depth + 1, maxDepth, gpuBuffer);
     gpuBuffer.FreeMovesSpace(newMoves);
