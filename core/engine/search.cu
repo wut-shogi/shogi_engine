@@ -48,8 +48,9 @@ class DevicePool {
          argsTuple = std::make_tuple(std::forward<Args>(args)...)]() mutable {
           int deviceId = getDeviceIdFromPool();
           auto start = std::chrono::high_resolution_clock::now();
-          logger.WriteLine("Starting thread with device Id: " +
-                           std::to_string(deviceId) + ", at: " + std::to_string(start.time_since_epoch().count()));
+          logger.WriteLine(
+              "Starting thread with device Id: " + std::to_string(deviceId) +
+              ", at: " + std::to_string(start.time_since_epoch().count()));
           cudaSetDevice(deviceId);
           Result result = std::apply(
               [func, deviceId](auto&&... funcArgs) mutable {
@@ -87,8 +88,10 @@ class DevicePool {
   }
 
   void releaseDeviceIdToPool(int deviceId) {
-    std::lock_guard<std::mutex> lock(deviceMutex);
-    devicePool.push(deviceId);
+    {
+      std::lock_guard<std::mutex> lock(deviceMutex);
+      devicePool.push(deviceId);
+    }
     condition.notify_one();
   }
 };
