@@ -298,7 +298,6 @@ int init(int deviceCount) {
   };
   for (int deviceId = 0; deviceId < deviceCount; deviceId++) {
     cudaSetDevice(deviceId);
-    printf("init on device: %d\n", deviceId);
     LookUpTables& lookUpTable = lookUpTables_Host.emplace_back();
 
     cudaMalloc((void**)&(lookUpTable.rankAttacks),
@@ -313,8 +312,6 @@ int init(int deviceCount) {
     cudaMalloc((void**)&(lookUpTable.fileMask), 9 * sizeof(Bitboard));
     cudaMalloc((void**)&(lookUpTable.startSqDiagRight), 81 * sizeof(uint32_t));
     cudaMalloc((void**)&(lookUpTable.startSqDiagLeft), 81 * sizeof(uint32_t));
-
-    printf("after malloc\n");
 
     cudaMemcpy(lookUpTable.rankAttacks, CPU::lookUpTables.rankAttacks,
                ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
