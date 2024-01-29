@@ -1,7 +1,7 @@
 #include <array>
+#include <mutex>
 #include <vector>
 #include "lookUpTables.h"
-#include <mutex>
 
 namespace shogi {
 namespace engine {
@@ -380,18 +380,16 @@ int init(int deviceId) {
   return 0;
 }
 
-void cleanup() {
+void cleanup(int deviceId) {
 #ifdef __CUDACC__
-  for (int i = 0; i < lookUpTables_Host.size(); i++) {
-    cudaFree(GPU::lookUpTables_Host[i].rankAttacks);
-    cudaFree(GPU::lookUpTables_Host[i].fileAttacks);
-    cudaFree(GPU::lookUpTables_Host[i].diagRightAttacks);
-    cudaFree(GPU::lookUpTables_Host[i].diagLeftAttacks);
-    cudaFree(GPU::lookUpTables_Host[i].rankMask);
-    cudaFree(GPU::lookUpTables_Host[i].fileMask);
-    cudaFree(GPU::lookUpTables_Host[i].startSqDiagRight);
-    cudaFree(GPU::lookUpTables_Host[i].startSqDiagLeft);
-  }
+  cudaFree(GPU::lookUpTables_Host[deviceId].rankAttacks);
+  cudaFree(GPU::lookUpTables_Host[deviceId].fileAttacks);
+  cudaFree(GPU::lookUpTables_Host[deviceId].diagRightAttacks);
+  cudaFree(GPU::lookUpTables_Host[deviceId].diagLeftAttacks);
+  cudaFree(GPU::lookUpTables_Host[deviceId].rankMask);
+  cudaFree(GPU::lookUpTables_Host[deviceId].fileMask);
+  cudaFree(GPU::lookUpTables_Host[deviceId].startSqDiagRight);
+  cudaFree(GPU::lookUpTables_Host[deviceId].startSqDiagLeft);
 #endif
 }
 }  // namespace GPU

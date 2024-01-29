@@ -73,7 +73,7 @@ bool init() {
 bool cleanupDevice(int deviceId) {
 #ifdef __CUDACC__
   printf("cleanupDevice on %d started\n", deviceId);
-  LookUpTables::GPU::cleanup();
+  LookUpTables::GPU::cleanup(deviceId);
   if (deviceData[deviceId].bufferSize > 0)
     cudaFree(deviceData[deviceId].buffer);
 #endif

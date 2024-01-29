@@ -9,7 +9,7 @@ void cleanup();
 }  // namespace CPU
 namespace GPU {
 int init(int deviceId);
-void cleanup();
+void cleanup(int deviceId);
 }  // namespace GPU
 
 RUNTYPE uint32_t getRankBlockPattern(const Bitboard& bb,
