@@ -5,8 +5,8 @@
 #include "USIconverter.h"
 #include "evaluation.h"
 #include "lookUpTables.h"
-#include "search.h"
 #include "multithreading.h"
+#include "search.h"
 
 #ifdef __CUDACC__
 #include <thrust/extrema.h>
@@ -29,38 +29,22 @@ int numberOfDevices = 1;
 
 std::vector<DeviceData> deviceData(numberOfDevices);
 
-bool initDevice(int deviceId) {
-#ifdef __CUDACC__
-  LookUpTables::GPU::init(deviceId);
-  size_t total = 0, free = 0;
-  cudaMemGetInfo(&free, &total);
-  if (free == 0)
-    return false;
-  deviceData[deviceId].bufferSize = (free / 4) * 4;
-  cudaError_t error = cudaMalloc((void**)&(deviceData[deviceId].buffer),
-                                 deviceData[deviceId].bufferSize);
-  if (error != cudaSuccess)
-    return false;
-#endif
-  return true;
-}
-
 bool init() {
   bool finalResult = true;
   try {
     LookUpTables::CPU::init();
 #ifdef __CUDACC__
-    bool finalResult = true;
-    DevicePool devicePool(numberOfDevices);
-    std::vector<std::future<bool>> futures;
-    for (int device = 0; device < numberOfDevices; device++) {
-      futures.emplace_back(
-          devicePool.executeWhenDeviceAvaliable<bool>(initDevice));
-    }
-    for (auto& future : futures) {
-      future.wait();
-      bool result = future.get();
-      finalResult &= result;
+    LookUpTables::GPU::init(numberOfDevices);
+    for (int deviceId = 0; deviceId < numberOfDevices; deviceId++) {
+      size_t total = 0, free = 0;
+      cudaMemGetInfo(&free, &total);
+      if (free == 0)
+        return false;
+      deviceData[deviceId].bufferSize = (free / 4) * 4;
+      cudaError_t error = cudaMalloc((void**)&(deviceData[deviceId].buffer),
+                                     deviceData[deviceId].bufferSize);
+      if (error != cudaSuccess)
+        return false;
     }
 #endif
   } catch (...) {
@@ -70,26 +54,11 @@ bool init() {
   return finalResult;
 }
 
-bool cleanupDevice(int deviceId) {
-#ifdef __CUDACC__
-  printf("cleanupDevice on %d started\n", deviceId);
-  LookUpTables::GPU::cleanup(deviceId);
-  if (deviceData[deviceId].bufferSize > 0)
-    cudaFree(deviceData[deviceId].buffer);
-#endif
-  return true;
-}
-
 void cleanup() {
 #ifdef __CUDACC__
-  DevicePool devicePool(numberOfDevices);
-  std::vector<std::future<bool>> futures;
-  for (int device = 0; device < numberOfDevices; device++) {
-    futures.emplace_back(
-        devicePool.executeWhenDeviceAvaliable<bool>(cleanupDevice));
-  }
-  for (auto& future : futures) {
-    future.wait();
+  LookUpTables::GPU::cleanup(numberOfDevices);
+  for (int deviceId = 0; deviceId < numberOfDevices; deviceId++) {
+    cudaFree(deviceData[deviceId].buffer);
   }
 #endif
   LookUpTables::CPU::cleanup();
