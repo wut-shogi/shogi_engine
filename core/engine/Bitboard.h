@@ -224,7 +224,6 @@ struct BitboardIterator {
  private:
   Bitboard bitboard;
   int bitPos;
-  bool occupied;
   Region currentRegion = TOP;
   uint32_t squareOffset;
 
@@ -233,7 +232,6 @@ struct BitboardIterator {
     bitboard = bb;
     currentRegion = TOP;
     squareOffset = 26;
-    occupied = false;
   }
   RUNTYPE bool Next() {
     while (bitboard[currentRegion] == 0) {

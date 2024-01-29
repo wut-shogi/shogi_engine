@@ -1,4 +1,4 @@
-add_executable(shogi_main main.cpp)
+add_executable(shogi_main main.cpp app.h app.cpp)
 
 target_link_libraries(shogi_main PRIVATE shogi_engine_core)
 

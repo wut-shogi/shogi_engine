@@ -1,4 +1,6 @@
 #include <array>
+#include <mutex>
+#include <vector>
 #include "lookUpTables.h"
 
 namespace shogi {
@@ -268,40 +270,10 @@ void cleanup() {
 namespace GPU {
 #ifdef __CUDACC__
 __device__ __constant__ LookUpTables lookUpTables[1];
-static LookUpTables lookUpsTables_Host;
+inline static std::vector<LookUpTables> lookUpTables_Host;
 #endif
-int init() {
+int init(int deviceCount) {
 #ifdef __CUDACC__
-  cudaMalloc((void**)&lookUpsTables_Host.rankAttacks,
-             ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.fileAttacks,
-             ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.diagRightAttacks,
-             ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.diagLeftAttacks,
-             ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.rankMask, 9 * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.fileMask, 9 * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.startSqDiagRight,
-             81 * sizeof(uint32_t));
-  cudaMalloc((void**)&lookUpsTables_Host.startSqDiagLeft,
-             81 * sizeof(uint32_t));
-
-  cudaMemcpy(lookUpsTables_Host.rankAttacks, CPU::lookUpTables.rankAttacks,
-             ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.fileAttacks, CPU::lookUpTables.fileAttacks,
-             ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.diagRightAttacks,
-             CPU::lookUpTables.diagRightAttacks, ARRAY_SIZE * sizeof(Bitboard),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.diagLeftAttacks,
-             CPU::lookUpTables.diagLeftAttacks, ARRAY_SIZE * sizeof(Bitboard),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.rankMask, CPU::lookUpTables.rankMask,
-             9 * sizeof(Bitboard), cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.fileMask, CPU::lookUpTables.fileMask,
-             9 * sizeof(Bitboard), cudaMemcpyHostToDevice);
-
   const uint32_t startingSquareDiagRightTemplate[BOARD_SIZE] = {
       0, 1,  2,  3,  4,  5,  6,  7,  8,   //
       1, 2,  3,  4,  5,  6,  7,  8,  17,  //
@@ -313,10 +285,6 @@ int init() {
       7, 8,  17, 26, 35, 44, 53, 62, 71,  //
       8, 17, 26, 35, 44, 53, 62, 71, 80,
   };
-  cudaMemcpy(lookUpsTables_Host.startSqDiagRight,
-             startingSquareDiagRightTemplate, 81 * sizeof(uint32_t),
-             cudaMemcpyHostToDevice);
-
   const uint32_t startingSquareDiagLeftTemplate[BOARD_SIZE] = {
       0,  1,  2,  3,  4,  5,  6,  7, 8,  //
       9,  0,  1,  2,  3,  4,  5,  6, 7,  //
@@ -328,55 +296,92 @@ int init() {
       63, 54, 45, 36, 27, 18, 9,  0, 1,  //
       72, 63, 54, 45, 36, 27, 18, 9, 0,
   };
-  cudaMemcpy(lookUpsTables_Host.startSqDiagLeft, startingSquareDiagLeftTemplate,
-             81 * sizeof(uint32_t), cudaMemcpyHostToDevice);
-  cudaError_t cudaStatus;
-  cudaStatus = cudaGetLastError();
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "cuda alloc and memcpy launch failed: %s\n",
-            cudaGetErrorString(cudaStatus));
-    return -1;
-  }
-  cudaStatus = cudaDeviceSynchronize();
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr,
-            "cudaDeviceSynchronize returned error code %d after launching "
-            "cuda alloc and memcpy!\n",
-            cudaStatus);
-    return -1;
-  }
+  for (int deviceId = 0; deviceId < deviceCount; deviceId++) {
+    cudaSetDevice(deviceId);
+    LookUpTables& lookUpTable = lookUpTables_Host.emplace_back();
 
-  cudaMemcpyToSymbol(GPU::lookUpTables, &lookUpsTables_Host,
-                     sizeof(LookUpTables), 0, cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&(lookUpTable.rankAttacks),
+               ARRAY_SIZE * sizeof(Bitboard));
+    cudaMalloc((void**)&(lookUpTable.fileAttacks),
+               ARRAY_SIZE * sizeof(Bitboard));
+    cudaMalloc((void**)&(lookUpTable.diagRightAttacks),
+               ARRAY_SIZE * sizeof(Bitboard));
+    cudaMalloc((void**)&(lookUpTable.diagLeftAttacks),
+               ARRAY_SIZE * sizeof(Bitboard));
+    cudaMalloc((void**)&(lookUpTable.rankMask), 9 * sizeof(Bitboard));
+    cudaMalloc((void**)&(lookUpTable.fileMask), 9 * sizeof(Bitboard));
+    cudaMalloc((void**)&(lookUpTable.startSqDiagRight), 81 * sizeof(uint32_t));
+    cudaMalloc((void**)&(lookUpTable.startSqDiagLeft), 81 * sizeof(uint32_t));
 
-  cudaStatus = cudaGetLastError();
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "cuda memcpyToSymbol launch failed: %s\n",
-            cudaGetErrorString(cudaStatus));
-    return -1;
+    cudaMemcpy(lookUpTable.rankAttacks, CPU::lookUpTables.rankAttacks,
+               ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
+    cudaMemcpy(lookUpTable.fileAttacks, CPU::lookUpTables.fileAttacks,
+               ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
+    cudaMemcpy(lookUpTable.diagRightAttacks, CPU::lookUpTables.diagRightAttacks,
+               ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
+    cudaMemcpy(lookUpTable.diagLeftAttacks, CPU::lookUpTables.diagLeftAttacks,
+               ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
+    cudaMemcpy(lookUpTable.rankMask, CPU::lookUpTables.rankMask,
+               9 * sizeof(Bitboard), cudaMemcpyHostToDevice);
+    cudaMemcpy(lookUpTable.fileMask, CPU::lookUpTables.fileMask,
+               9 * sizeof(Bitboard), cudaMemcpyHostToDevice);
+    cudaMemcpy(lookUpTable.startSqDiagRight, startingSquareDiagRightTemplate,
+               81 * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(lookUpTable.startSqDiagLeft, startingSquareDiagLeftTemplate,
+               81 * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    cudaError_t cudaStatus;
+    cudaStatus = cudaGetLastError();
+    if (cudaStatus != cudaSuccess) {
+      fprintf(stderr, "cuda alloc and memcpy launch failed: %s\n",
+              cudaGetErrorString(cudaStatus));
+      return -1;
+    }
+    cudaStatus = cudaDeviceSynchronize();
+    if (cudaStatus != cudaSuccess) {
+      fprintf(stderr,
+              "cudaDeviceSynchronize returned error code %d after launching "
+              "cuda alloc and memcpy!\n",
+              cudaStatus);
+      return -1;
+    }
+
+    cudaMemcpyToSymbol(GPU::lookUpTables, &lookUpTable, sizeof(LookUpTables), 0,
+                       cudaMemcpyHostToDevice);
+
+    cudaStatus = cudaGetLastError();
+    if (cudaStatus != cudaSuccess) {
+      fprintf(stderr, "cuda memcpyToSymbol launch failed: %s\n",
+              cudaGetErrorString(cudaStatus));
+      return -1;
+    }
+    cudaStatus = cudaDeviceSynchronize();
+    if (cudaStatus != cudaSuccess) {
+      fprintf(stderr,
+              "cudaDeviceSynchronize returned error code %d after launching "
+              "memcpyToSymbol!\n",
+              cudaStatus);
+      return -1;
+    }
   }
-  cudaStatus = cudaDeviceSynchronize();
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr,
-            "cudaDeviceSynchronize returned error code %d after launching "
-            "memcpyToSymbol!\n",
-            cudaStatus);
-    return -1;
-  }
+  cudaSetDevice(0);
 #endif
   return 0;
 }
 
-void cleanup() {
+void cleanup(int deviceCount) {
 #ifdef __CUDACC__
-  cudaFree(GPU::lookUpsTables_Host.rankAttacks);
-  cudaFree(GPU::lookUpsTables_Host.fileAttacks);
-  cudaFree(GPU::lookUpsTables_Host.diagRightAttacks);
-  cudaFree(GPU::lookUpsTables_Host.diagLeftAttacks);
-  cudaFree(GPU::lookUpsTables_Host.rankMask);
-  cudaFree(GPU::lookUpsTables_Host.fileMask);
-  cudaFree(GPU::lookUpsTables_Host.startSqDiagRight);
-  cudaFree(GPU::lookUpsTables_Host.startSqDiagLeft);
+  for (int deviceId = 0; deviceId < deviceCount; deviceId++) {
+    cudaSetDevice(deviceId);
+    cudaFree(GPU::lookUpTables_Host[deviceId].rankAttacks);
+    cudaFree(GPU::lookUpTables_Host[deviceId].fileAttacks);
+    cudaFree(GPU::lookUpTables_Host[deviceId].diagRightAttacks);
+    cudaFree(GPU::lookUpTables_Host[deviceId].diagLeftAttacks);
+    cudaFree(GPU::lookUpTables_Host[deviceId].rankMask);
+    cudaFree(GPU::lookUpTables_Host[deviceId].fileMask);
+    cudaFree(GPU::lookUpTables_Host[deviceId].startSqDiagRight);
+    cudaFree(GPU::lookUpTables_Host[deviceId].startSqDiagLeft);
+  }
+  cudaSetDevice(0);
 #endif
 }
 }  // namespace GPU

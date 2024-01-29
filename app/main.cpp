@@ -1,8 +1,8 @@
 #include <iostream>
-#include "engine.h"
+#include "app.h"
 
 int main(int argc, char* argv[]) {
-  shogi::engine::test();
-
+  App app;
+  app.Parse(argc, argv);
   return 0;
 }

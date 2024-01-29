@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <chrono>
 #include "Board.h"
 #include "CPUsearchHelpers.h"
 #include "USIconverter.h"
@@ -14,6 +15,8 @@ bool init();
 
 void cleanup();
 
+void setDeviceCount(int numberOfDevicesUsed);
+
 Move GetBestMove(const Board& board,
                  bool isWhite,
                  uint16_t maxDepth,
@@ -23,9 +26,8 @@ Move GetBestMove(const Board& board,
 uint64_t countMovesCPU(Board& board, uint16_t depth, bool isWhite);
 
 template <bool Verbose = false>
-uint64_t perftCPU(const Board& board,
-                           uint16_t depth,
-                           bool isWhite = false) {
+uint64_t perftCPU(const Board& board, uint16_t depth, bool isWhite = false) {
+  auto start = std::chrono::high_resolution_clock::now();
   CPU::MoveList moves = CPU::MoveList(board, isWhite);
   if (depth == 1) {
     for (int i = 0; i < moves.size(); i++) {
@@ -40,7 +42,7 @@ uint64_t perftCPU(const Board& board,
   uint64_t count;
   Board tmpBoard = board;
   for (const auto& move : moves) {
-    MoveInfo moveReturnInfo = makeMove<true>(tmpBoard, move);
+    makeMove(tmpBoard, move);
     count = countMovesCPU(tmpBoard, depth - 1, !isWhite);
     tmpBoard = board;
     if constexpr (Verbose)
@@ -49,14 +51,17 @@ uint64_t perftCPU(const Board& board,
   }
   if constexpr (Verbose)
     std::cout << "Nodes searched: " << moveCount << std::endl;
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "Time: " << duration.count() << " ms" << std::endl;
   return moveCount;
 }
-
 
 #ifdef __CUDACC__
 class GPUBuffer {
  public:
-  GPUBuffer(const Board& startBoard);
+  GPUBuffer(const Board& startBoard, uint8_t* buffer, uint32_t size);
 
   Board* GetStartBoardPtr();
   bool ReserveMovesSpace(uint32_t size,
@@ -67,43 +72,51 @@ class GPUBuffer {
   void FreeOffsetsSpace(uint32_t* offsets);
   bool ReserveBitboardsSpace(uint32_t size, uint32_t*& outBitboardsPtr);
 
-  void FreeBitboardsSpace(uint32_t size);
+  void FreeBitboardsSpace();
 
  private:
+  uint8_t* buffer;
+  uint32_t bufferSize = 0;
   Board* d_startBoard;
   uint8_t* freeBegin;
   uint8_t* freeEnd;
 };
 
-uint64_t countMovesGPU(Move* moves,
-                       uint32_t size,
+uint64_t countMovesGPU(bool Verbose,
+                       const Board& board,
+                       CPU::MoveList& moves,
                        bool isWhite,
-                       uint16_t depth,
-                       uint16_t maxDepth,
-                       GPUBuffer& gpuBuffer);
+                       uint16_t maxDepth);
 
 template <bool Verbose = false>
 uint64_t perftGPU(Board& board, uint16_t depth, bool isWhite = false) {
-  GPUBuffer gpuBuffer(board);
+  auto start = std::chrono::high_resolution_clock::now();
   CPU::MoveList moves(board, isWhite);
-  uint64_t nodesSearched = 0;
-  for (int i = 0; i < moves.size(); i++) {
-    Move* d_moves;
-    gpuBuffer.ReserveMovesSpace(1, 1, d_moves);
-    cudaMemcpy(d_moves, moves.begin() + i, sizeof(Move),
-               cudaMemcpyHostToDevice);
-    uint64_t numberOfMoves =
-        countMovesGPU(d_moves, 1, !isWhite, 1, depth, gpuBuffer);
-    if constexpr (Verbose)
-      std::cout << MoveToUSI(*(moves.data() + i)) << ": " << numberOfMoves
-                << std::endl;
-    nodesSearched += numberOfMoves;
-  }
+  uint64_t nodesSearched = countMovesGPU(Verbose, board, moves, isWhite, depth);
   if constexpr (Verbose)
     std::cout << "Nodes searched: " << nodesSearched << std::endl;
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+  std::cout << "Time: " << duration.count() << " ms" << std::endl;
   return nodesSearched;
 }
 #endif
+template <bool Verbose = false>
+uint64_t perft(Board& board,
+               bool isWhite,
+               uint16_t depth,
+               SearchType searchType) {
+  if (searchType == GPU) {
+#ifdef __CUDACC__
+    return perftGPU<Verbose>(board, depth, isWhite);
+#else
+    return 0;
+#endif  // __CUDACC__
+  } else {
+    return perftCPU<Verbose>(board, depth, isWhite);
+  }
+}
 }  // namespace SEARCH
 }  // namespace engine
 }  // namespace shogi

@@ -9,6 +9,7 @@ set(headerFiles
     engine/lookUpTables.h
     engine/MoveGen.h
     engine/MoveGenHelpers.h
+    engine/multithreading.h
     engine/Rules.h
     engine/search.h
     engine/Square.h
@@ -18,14 +19,12 @@ set(headerFiles
 set(sourceFiles
     engine/Bitboard.cu
     engine/Board.cu
-    engine/CPUsearchHelpers.cu
     engine/engine.cu
     engine/evaluation.cu
-    engine/game.cu
-    engine/MoveGen.cu
-    engine/MoveGenHelpers.cu
     engine/GPUsearchHelpers.cu
     engine/lookUpTables.cu
+    engine/MoveGen.cu
+    engine/multithreading.cu
     engine/search.cu
     engine/USIconverter.cu
 )
