@@ -276,45 +276,48 @@ inline static std::mutex lookupTablesMutex;
 #endif
 int init(int deviceId) {
 #ifdef __CUDACC__
+  int idx = 0;
   {
     std::lock_guard<std::mutex> lock(lookupTablesMutex);
     lookUpTables_Host.emplace_back();
+    idx = lookUpTables_Host.size() - 1;
   }
+  LookUpTables& lookUpTable = lookUpTables_Host[idx];
   printf("After emplace_back\n");
-  cudaMalloc((void**)&(lookUpTables_Host[deviceId].rankAttacks),
+  cudaMalloc((void**)&(lookUpTable.rankAttacks),
              ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&(lookUpTables_Host[deviceId].fileAttacks),
+  cudaMalloc((void**)&(lookUpTable.fileAttacks),
              ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&(lookUpTables_Host[deviceId].diagRightAttacks),
+  cudaMalloc((void**)&(lookUpTable.diagRightAttacks),
              ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&(lookUpTables_Host[deviceId].diagLeftAttacks),
+  cudaMalloc((void**)&(lookUpTable.diagLeftAttacks),
              ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&(lookUpTables_Host[deviceId].rankMask),
+  cudaMalloc((void**)&(lookUpTable.rankMask),
              9 * sizeof(Bitboard));
-  cudaMalloc((void**)&(lookUpTables_Host[deviceId].fileMask),
+  cudaMalloc((void**)&(lookUpTable.fileMask),
              9 * sizeof(Bitboard));
-  cudaMalloc((void**)&(lookUpTables_Host[deviceId].startSqDiagRight),
+  cudaMalloc((void**)&(lookUpTable.startSqDiagRight),
              81 * sizeof(uint32_t));
-  cudaMalloc((void**)&(lookUpTables_Host[deviceId].startSqDiagLeft),
+  cudaMalloc((void**)&(lookUpTable.startSqDiagLeft),
              81 * sizeof(uint32_t));
 
   printf("after malloc\n");
 
-  cudaMemcpy(lookUpTables_Host[deviceId].rankAttacks,
+  cudaMemcpy(lookUpTable.rankAttacks,
              CPU::lookUpTables.rankAttacks, ARRAY_SIZE * sizeof(Bitboard),
              cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpTables_Host[deviceId].fileAttacks,
+  cudaMemcpy(lookUpTable.fileAttacks,
              CPU::lookUpTables.fileAttacks, ARRAY_SIZE * sizeof(Bitboard),
              cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpTables_Host[deviceId].diagRightAttacks,
+  cudaMemcpy(lookUpTable.diagRightAttacks,
              CPU::lookUpTables.diagRightAttacks, ARRAY_SIZE * sizeof(Bitboard),
              cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpTables_Host[deviceId].diagLeftAttacks,
+  cudaMemcpy(lookUpTable.diagLeftAttacks,
              CPU::lookUpTables.diagLeftAttacks, ARRAY_SIZE * sizeof(Bitboard),
              cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpTables_Host[deviceId].rankMask, CPU::lookUpTables.rankMask,
+  cudaMemcpy(lookUpTable.rankMask, CPU::lookUpTables.rankMask,
              9 * sizeof(Bitboard), cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpTables_Host[deviceId].fileMask, CPU::lookUpTables.fileMask,
+  cudaMemcpy(lookUpTable.fileMask, CPU::lookUpTables.fileMask,
              9 * sizeof(Bitboard), cudaMemcpyHostToDevice);
 
   const uint32_t startingSquareDiagRightTemplate[BOARD_SIZE] = {
@@ -328,7 +331,7 @@ int init(int deviceId) {
       7, 8,  17, 26, 35, 44, 53, 62, 71,  //
       8, 17, 26, 35, 44, 53, 62, 71, 80,
   };
-  cudaMemcpy(lookUpTables_Host[deviceId].startSqDiagRight,
+  cudaMemcpy(lookUpTable.startSqDiagRight,
              startingSquareDiagRightTemplate, 81 * sizeof(uint32_t),
              cudaMemcpyHostToDevice);
 
@@ -343,7 +346,7 @@ int init(int deviceId) {
       63, 54, 45, 36, 27, 18, 9,  0, 1,  //
       72, 63, 54, 45, 36, 27, 18, 9, 0,
   };
-  cudaMemcpy(lookUpTables_Host[deviceId].startSqDiagLeft,
+  cudaMemcpy(lookUpTable.startSqDiagLeft,
              startingSquareDiagLeftTemplate, 81 * sizeof(uint32_t),
              cudaMemcpyHostToDevice);
   cudaError_t cudaStatus;
@@ -362,7 +365,7 @@ int init(int deviceId) {
     return -1;
   }
 
-  cudaMemcpyToSymbol(GPU::lookUpTables, &(lookUpTables_Host[deviceId]),
+  cudaMemcpyToSymbol(GPU::lookUpTables, &lookUpTable,
                      sizeof(LookUpTables), 0, cudaMemcpyHostToDevice);
 
   cudaStatus = cudaGetLastError();
