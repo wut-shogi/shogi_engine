@@ -76,7 +76,7 @@ class GPUBuffer {
 
  private:
   uint8_t* buffer;
-  uint32_t bufferSize;
+  uint32_t bufferSize = 0;
   Board* d_startBoard;
   uint8_t* freeBegin;
   uint8_t* freeEnd;
@@ -91,7 +91,6 @@ uint64_t countMovesGPU(bool Verbose,
 template <bool Verbose = false>
 uint64_t perftGPU(Board& board, uint16_t depth, bool isWhite = false) {
   auto start = std::chrono::high_resolution_clock::now();
-  GPUBuffer gpuBuffer(board, nullptr, 0);
   CPU::MoveList moves(board, isWhite);
   uint64_t nodesSearched = countMovesGPU(Verbose, board, moves, isWhite, depth);
   if constexpr (Verbose)

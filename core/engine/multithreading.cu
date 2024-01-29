@@ -12,7 +12,7 @@ void ThreadSafeLog::WriteLine(const std::string& message) {
 #endif  //  VERBOSE
 }
 
-DevicePool::DevicePool(size_t numberOfDevices) : stop(false) {
+DevicePool::DevicePool(size_t numberOfDevices){
   for (size_t i = 0; i < numberOfDevices; ++i) {
     devicePool.push(i);
   }

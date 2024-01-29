@@ -1,12 +1,35 @@
 #include <future>
 #include <mutex>
 #include <stack>
-#include <thread>
 #include <string>
+#include <thread>
 
 namespace shogi {
-	namespace engine {
+namespace engine {
 #ifdef __CUDACC__
+template <typename T>
+class ThreadSafeVector {
+ public:
+  ThreadSafeVector(size_t size) { values = std::vector<T>(size, 0); }
+  T GetValue(size_t idx) { return values[idx]; }
+
+  void SetValue(size_t idx, T value) {
+    std::lock_guard<std::mutex> lock(valuesMutex);
+    values[idx] = value;
+  }
+
+  void AddValue(size_t idx, T value) {
+    std::lock_guard<std::mutex> lock(valuesMutex);
+    values[idx] += value;
+  }
+
+  size_t size() { return values.size(); }
+
+ private:
+  std::vector<T> values;
+  std::mutex valuesMutex;
+};
+
 class ThreadSafeLog {
  public:
   static void WriteLine(const std::string& message);
@@ -52,11 +75,10 @@ class DevicePool {
  private:
   std::mutex deviceMutex;
   std::condition_variable condition;
-  bool stop;
   std::stack<int> devicePool;
   int getDeviceIdFromPool();
   void releaseDeviceIdToPool(int deviceId);
 };
 #endif
-}
-}
+}  // namespace engine
+}  // namespace shogi

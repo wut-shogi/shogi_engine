@@ -237,21 +237,6 @@ uint64_t countMovesCPU(Board& board, uint16_t depth, bool isWhite) {
 }
 // #define __CUDACC__
 #ifdef __CUDACC__
-template <typename T>
-class ThreadSafeVector {
- public:
-  ThreadSafeVector(size_t size) { values = std::vector<T>(size, 0); }
-  T& operator[](int idx) {
-    std::lock_guard<std::mutex> lock(valuesMutex);
-    return values[idx];
-  }
-
-  size_t size() { return values.size(); }
-
- private:
-  std::vector<T> values;
-  std::mutex valuesMutex;
-};
 
 GPUBuffer::GPUBuffer(const Board& startBoard,
                      uint8_t* d_buffer,
@@ -317,7 +302,7 @@ int minMaxGPU(Move* moves,
     // Evaluate moves
     GPU::evaluateBoards(size, isWhite, depth, gpuBuffer.GetStartBoardPtr(),
                         moves, (int16_t*)moves);
-    numberOfMovesPerDepth[depth - 1] += size;
+    numberOfMovesPerDepth.AddValue(depth - 1, size);
     return 0;
   }
   uint32_t processed = 0;
@@ -382,7 +367,7 @@ int minMaxGPU(Move* moves,
     gpuBuffer.FreeOffsetsSpace(offsets);
     processed += sizeToProcess;
   }
-  numberOfMovesPerDepth[depth - 1] += size;
+  numberOfMovesPerDepth.AddValue(depth - 1, size);
   return 0;
 }
 
@@ -448,9 +433,9 @@ Move GetBestMoveGPU(const Board& board, bool isWhite, uint16_t maxDepth) {
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  numberOfMovesPerDepth[0] = rootMoves.size();
+  numberOfMovesPerDepth.SetValue(0, rootMoves.size());
   for (int i = 0; i < numberOfMovesPerDepth.size(); i++) {
-    std::cout << "Generated: " << numberOfMovesPerDepth[i]
+    std::cout << "Generated: " << numberOfMovesPerDepth.GetValue(i)
               << " positions on depth: " << i + 1 << std::endl;
   }
   std::cout << "Best move found: " << MoveToUSI(bestMove) << std::endl;
