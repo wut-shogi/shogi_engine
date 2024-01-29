@@ -31,7 +31,7 @@ std::vector<DeviceData> deviceData(numberOfDevices);
 
 bool initDevice(int deviceId) {
 #ifdef __CUDACC__
-  LookUpTables::GPU::init();
+  LookUpTables::GPU::init(deviceId);
   size_t total = 0, free = 0;
   cudaMemGetInfo(&free, &total);
   if (free == 0)

@@ -1,5 +1,6 @@
 #include <array>
 #include "lookUpTables.h"
+#include <vector>
 
 namespace shogi {
 namespace engine {
@@ -268,38 +269,44 @@ void cleanup() {
 namespace GPU {
 #ifdef __CUDACC__
 __device__ __constant__ LookUpTables lookUpTables[1];
-static LookUpTables lookUpsTables_Host;
+inline static std::vector<LookUpTables> lookUpTables_Host;
+//static LookUpTables lookUpsTables_Host;
 #endif
-int init() {
+int init(int deviceId) {
 #ifdef __CUDACC__
-  cudaMalloc((void**)&lookUpsTables_Host.rankAttacks,
+  lookUpTables_Host.push_back(LookUpTables());
+  cudaMalloc((void**)&lookUpTables_Host[deviceId].rankAttacks,
              ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.fileAttacks,
+  cudaMalloc((void**)&lookUpTables_Host[deviceId].fileAttacks,
              ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.diagRightAttacks,
+  cudaMalloc((void**)&lookUpTables_Host[deviceId].diagRightAttacks,
              ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.diagLeftAttacks,
+  cudaMalloc((void**)&lookUpTables_Host[deviceId].diagLeftAttacks,
              ARRAY_SIZE * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.rankMask, 9 * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.fileMask, 9 * sizeof(Bitboard));
-  cudaMalloc((void**)&lookUpsTables_Host.startSqDiagRight,
+  cudaMalloc((void**)&lookUpTables_Host[deviceId].rankMask,
+             9 * sizeof(Bitboard));
+  cudaMalloc((void**)&lookUpTables_Host[deviceId].fileMask,
+             9 * sizeof(Bitboard));
+  cudaMalloc((void**)&lookUpTables_Host[deviceId].startSqDiagRight,
              81 * sizeof(uint32_t));
-  cudaMalloc((void**)&lookUpsTables_Host.startSqDiagLeft,
+  cudaMalloc((void**)&lookUpTables_Host[deviceId].startSqDiagLeft,
              81 * sizeof(uint32_t));
 
-  cudaMemcpy(lookUpsTables_Host.rankAttacks, CPU::lookUpTables.rankAttacks,
+  cudaMemcpy(lookUpTables_Host[deviceId].rankAttacks,
+             CPU::lookUpTables.rankAttacks,
              ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.fileAttacks, CPU::lookUpTables.fileAttacks,
+  cudaMemcpy(lookUpTables_Host[deviceId].fileAttacks,
+             CPU::lookUpTables.fileAttacks,
              ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.diagRightAttacks,
+  cudaMemcpy(lookUpTables_Host[deviceId].diagRightAttacks,
              CPU::lookUpTables.diagRightAttacks, ARRAY_SIZE * sizeof(Bitboard),
              cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.diagLeftAttacks,
+  cudaMemcpy(lookUpTables_Host[deviceId].diagLeftAttacks,
              CPU::lookUpTables.diagLeftAttacks, ARRAY_SIZE * sizeof(Bitboard),
              cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.rankMask, CPU::lookUpTables.rankMask,
+  cudaMemcpy(lookUpTables_Host[deviceId].rankMask, CPU::lookUpTables.rankMask,
              9 * sizeof(Bitboard), cudaMemcpyHostToDevice);
-  cudaMemcpy(lookUpsTables_Host.fileMask, CPU::lookUpTables.fileMask,
+  cudaMemcpy(lookUpTables_Host[deviceId].fileMask, CPU::lookUpTables.fileMask,
              9 * sizeof(Bitboard), cudaMemcpyHostToDevice);
 
   const uint32_t startingSquareDiagRightTemplate[BOARD_SIZE] = {
@@ -313,7 +320,7 @@ int init() {
       7, 8,  17, 26, 35, 44, 53, 62, 71,  //
       8, 17, 26, 35, 44, 53, 62, 71, 80,
   };
-  cudaMemcpy(lookUpsTables_Host.startSqDiagRight,
+  cudaMemcpy(lookUpTables_Host[deviceId].startSqDiagRight,
              startingSquareDiagRightTemplate, 81 * sizeof(uint32_t),
              cudaMemcpyHostToDevice);
 
@@ -328,7 +335,8 @@ int init() {
       63, 54, 45, 36, 27, 18, 9,  0, 1,  //
       72, 63, 54, 45, 36, 27, 18, 9, 0,
   };
-  cudaMemcpy(lookUpsTables_Host.startSqDiagLeft, startingSquareDiagLeftTemplate,
+  cudaMemcpy(lookUpTables_Host[deviceId].startSqDiagLeft,
+             startingSquareDiagLeftTemplate,
              81 * sizeof(uint32_t), cudaMemcpyHostToDevice);
   cudaError_t cudaStatus;
   cudaStatus = cudaGetLastError();
@@ -346,7 +354,7 @@ int init() {
     return -1;
   }
 
-  cudaMemcpyToSymbol(GPU::lookUpTables, &lookUpsTables_Host,
+  cudaMemcpyToSymbol(GPU::lookUpTables, &lookUpTables_Host[deviceId],
                      sizeof(LookUpTables), 0, cudaMemcpyHostToDevice);
 
   cudaStatus = cudaGetLastError();
@@ -369,14 +377,16 @@ int init() {
 
 void cleanup() {
 #ifdef __CUDACC__
-  cudaFree(GPU::lookUpsTables_Host.rankAttacks);
-  cudaFree(GPU::lookUpsTables_Host.fileAttacks);
-  cudaFree(GPU::lookUpsTables_Host.diagRightAttacks);
-  cudaFree(GPU::lookUpsTables_Host.diagLeftAttacks);
-  cudaFree(GPU::lookUpsTables_Host.rankMask);
-  cudaFree(GPU::lookUpsTables_Host.fileMask);
-  cudaFree(GPU::lookUpsTables_Host.startSqDiagRight);
-  cudaFree(GPU::lookUpsTables_Host.startSqDiagLeft);
+  for (int i = 0; i < lookUpTables_Host.size(); i++) {
+    cudaFree(GPU::lookUpTables_Host[i].rankAttacks);
+    cudaFree(GPU::lookUpTables_Host[i].fileAttacks);
+    cudaFree(GPU::lookUpTables_Host[i].diagRightAttacks);
+    cudaFree(GPU::lookUpTables_Host[i].diagLeftAttacks);
+    cudaFree(GPU::lookUpTables_Host[i].rankMask);
+    cudaFree(GPU::lookUpTables_Host[i].fileMask);
+    cudaFree(GPU::lookUpTables_Host[i].startSqDiagRight);
+    cudaFree(GPU::lookUpTables_Host[i].startSqDiagLeft);
+  }
 #endif
 }
 }  // namespace GPU

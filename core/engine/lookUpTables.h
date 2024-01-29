@@ -8,7 +8,7 @@ void init();
 void cleanup();
 }  // namespace CPU
 namespace GPU {
-int init();
+int init(int deviceId);
 void cleanup();
 }  // namespace GPU
 
