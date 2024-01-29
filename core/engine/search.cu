@@ -36,6 +36,7 @@ bool init() {
 #ifdef __CUDACC__
     LookUpTables::GPU::init(numberOfDevices);
     for (int deviceId = 0; deviceId < numberOfDevices; deviceId++) {
+      cudaSetDevice(deviceId);
       size_t total = 0, free = 0;
       cudaMemGetInfo(&free, &total);
       if (free == 0)
@@ -46,6 +47,7 @@ bool init() {
       if (error != cudaSuccess)
         return false;
     }
+    cudaSetDevice(0);
 #endif
   } catch (...) {
     return false;
@@ -58,8 +60,10 @@ void cleanup() {
 #ifdef __CUDACC__
   LookUpTables::GPU::cleanup(numberOfDevices);
   for (int deviceId = 0; deviceId < numberOfDevices; deviceId++) {
+    cudaSetDevice(deviceId);
     cudaFree(deviceData[deviceId].buffer);
   }
+  cudaSetDevice(0);
 #endif
   LookUpTables::CPU::cleanup();
   afterInit = false;

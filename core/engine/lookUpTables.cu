@@ -298,6 +298,7 @@ int init(int deviceCount) {
   };
   for (int deviceId = 0; deviceId < deviceCount; deviceId++) {
     cudaSetDevice(deviceId);
+    printf("init on device: %d\n", deviceId);
     LookUpTables& lookUpTable = lookUpTables_Host.emplace_back();
 
     cudaMalloc((void**)&(lookUpTable.rankAttacks),
@@ -373,6 +374,7 @@ int init(int deviceCount) {
 void cleanup(int deviceCount) {
 #ifdef __CUDACC__
   for (int deviceId = 0; deviceId < deviceCount; deviceId++) {
+    cudaSetDevice(deviceId);
     cudaFree(GPU::lookUpTables_Host[deviceId].rankAttacks);
     cudaFree(GPU::lookUpTables_Host[deviceId].fileAttacks);
     cudaFree(GPU::lookUpTables_Host[deviceId].diagRightAttacks);
@@ -382,6 +384,7 @@ void cleanup(int deviceCount) {
     cudaFree(GPU::lookUpTables_Host[deviceId].startSqDiagRight);
     cudaFree(GPU::lookUpTables_Host[deviceId].startSqDiagLeft);
   }
+  cudaSetDevice(0);
 #endif
 }
 }  // namespace GPU
