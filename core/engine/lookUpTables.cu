@@ -280,6 +280,7 @@ int init(int deviceId) {
     std::lock_guard<std::mutex> lock(lookupTablesMutex);
     lookUpTables_Host.emplace_back();
   }
+  printf("After emplace_back\n");
   cudaMalloc((void**)&(lookUpTables_Host[deviceId].rankAttacks),
              ARRAY_SIZE * sizeof(Bitboard));
   cudaMalloc((void**)&(lookUpTables_Host[deviceId].fileAttacks),
@@ -296,6 +297,8 @@ int init(int deviceId) {
              81 * sizeof(uint32_t));
   cudaMalloc((void**)&(lookUpTables_Host[deviceId].startSqDiagLeft),
              81 * sizeof(uint32_t));
+
+  printf("after malloc\n");
 
   cudaMemcpy(lookUpTables_Host[deviceId].rankAttacks,
              CPU::lookUpTables.rankAttacks, ARRAY_SIZE * sizeof(Bitboard),
