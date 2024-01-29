@@ -8,6 +8,10 @@ set(SHOGI_DESCRIPTION "TODO")
 
 # options
 option(SHOGI_CUDA_SUPPORT "Enable CUDA compilation and execution." ON)
+option(VERBOSE "Enable verbose output" OFF)
+if(VERBOSE)
+    add_definitions(-DVERBOSE=1)
+endif()
 
 # handle language settings regarding support for CUDA
 if(SHOGI_CUDA_SUPPORT)

@@ -1,9 +1,4 @@
 #include <atomic>
-#include <future>
-#include <mutex>
-#include <queue>
-#include <stack>
-#include <thread>
 #include <vector>
 #include "CPUsearchHelpers.h"
 #include "GPUsearchHelpers.h"
@@ -11,6 +6,7 @@
 #include "evaluation.h"
 #include "lookUpTables.h"
 #include "search.h"
+#include "multithreading.h"
 
 #ifdef __CUDACC__
 #include <thrust/extrema.h>
@@ -19,83 +15,6 @@
 namespace shogi {
 namespace engine {
 namespace SEARCH {
-
-#ifdef __CUDACC__
-class ThreadSafeLog {
- public:
-  void WriteLine(const std::string& message) {
-    std::unique_lock<std::mutex> lock(logMutex);
-    std::cout << message << std::endl;
-  }
-
- private:
-  std::mutex logMutex;
-};
-class DevicePool {
- public:
-  DevicePool(size_t numberOfDevices) : stop(false) {
-    for (size_t i = 0; i < numberOfDevices; ++i) {
-      devicePool.push(i);
-    }
-  }
-
-  template <typename Result, typename Function, typename... Args>
-  std::future<Result> executeWhenDeviceAvaliable(Function&& func,
-                                                 Args&&... args) {
-    return std::async(
-        std::launch::async,
-        [this, func = std::forward<Function>(func),
-         argsTuple = std::make_tuple(std::forward<Args>(args)...)]() mutable {
-          int deviceId = getDeviceIdFromPool();
-          auto start = std::chrono::high_resolution_clock::now();
-          logger.WriteLine(
-              "Starting thread with device Id: " + std::to_string(deviceId) +
-              ", at: " + std::to_string(start.time_since_epoch().count()));
-          cudaSetDevice(deviceId);
-          Result result = std::apply(
-              [func, deviceId](auto&&... funcArgs) mutable {
-                return func(deviceId,
-                            std::forward<decltype(funcArgs)>(funcArgs)...);
-              },
-              argsTuple);
-          auto stop = std::chrono::high_resolution_clock::now();
-          auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-              stop - start);
-          logger.WriteLine(
-              "Ending thread with device Id: " + std::to_string(deviceId) +
-              ", duration: " + std::to_string(duration.count()) + "");
-          releaseDeviceIdToPool(deviceId);
-          return result;
-        });
-  }
-
- private:
-  std::mutex deviceMutex;
-  std::condition_variable condition;
-  bool stop;
-  ThreadSafeLog logger;
-
-  std::stack<int> devicePool;
-
-  int getDeviceIdFromPool() {
-    std::unique_lock<std::mutex> lock(deviceMutex);
-    // Wait until a device Id is available
-    condition.wait(lock, [this] { return !devicePool.empty(); });
-    // Acquire an available device Id
-    int deviceId = devicePool.top();
-    devicePool.pop();
-    return deviceId;
-  }
-
-  void releaseDeviceIdToPool(int deviceId) {
-    {
-      std::lock_guard<std::mutex> lock(deviceMutex);
-      devicePool.push(deviceId);
-    }
-    condition.notify_one();
-  }
-};
-#endif
 
 struct DeviceData {
   uint8_t* buffer = nullptr;
@@ -310,9 +229,8 @@ uint64_t countMovesCPU(Board& board, uint16_t depth, bool isWhite) {
   uint64_t moveCount = 0;
   Board oldBoard = board;
   for (const auto& move : moves) {
-    MoveInfo moveReturnInfo = makeMove<true>(board, move);
+    makeMove(board, move);
     moveCount += countMovesCPU(board, depth - 1, !isWhite);
-    // unmakeMove(board, move, moveReturnInfo);
     board = oldBoard;
   }
   return moveCount;

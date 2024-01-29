@@ -42,7 +42,7 @@ uint64_t perftCPU(const Board& board, uint16_t depth, bool isWhite = false) {
   uint64_t count;
   Board tmpBoard = board;
   for (const auto& move : moves) {
-    MoveInfo moveReturnInfo = makeMove<true>(tmpBoard, move);
+    makeMove(tmpBoard, move);
     count = countMovesCPU(tmpBoard, depth - 1, !isWhite);
     tmpBoard = board;
     if constexpr (Verbose)
