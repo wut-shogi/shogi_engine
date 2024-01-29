@@ -1,6 +1,7 @@
 #include <array>
-#include "lookUpTables.h"
 #include <vector>
+#include "lookUpTables.h"
+#include <mutex>
 
 namespace shogi {
 namespace engine {
@@ -270,11 +271,15 @@ namespace GPU {
 #ifdef __CUDACC__
 __device__ __constant__ LookUpTables lookUpTables[1];
 inline static std::vector<LookUpTables> lookUpTables_Host;
-//static LookUpTables lookUpsTables_Host;
+inline static std::mutex lookupTablesMutex;
+// static LookUpTables lookUpsTables_Host;
 #endif
 int init(int deviceId) {
 #ifdef __CUDACC__
-  lookUpTables_Host.push_back(LookUpTables());
+  {
+    std::lock_guard<std::mutex> lock(lookupTablesMutex);
+    lookUpTables_Host.push_back(LookUpTables());
+  }
   cudaMalloc((void**)&lookUpTables_Host[deviceId].rankAttacks,
              ARRAY_SIZE * sizeof(Bitboard));
   cudaMalloc((void**)&lookUpTables_Host[deviceId].fileAttacks,
@@ -293,11 +298,11 @@ int init(int deviceId) {
              81 * sizeof(uint32_t));
 
   cudaMemcpy(lookUpTables_Host[deviceId].rankAttacks,
-             CPU::lookUpTables.rankAttacks,
-             ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
+             CPU::lookUpTables.rankAttacks, ARRAY_SIZE * sizeof(Bitboard),
+             cudaMemcpyHostToDevice);
   cudaMemcpy(lookUpTables_Host[deviceId].fileAttacks,
-             CPU::lookUpTables.fileAttacks,
-             ARRAY_SIZE * sizeof(Bitboard), cudaMemcpyHostToDevice);
+             CPU::lookUpTables.fileAttacks, ARRAY_SIZE * sizeof(Bitboard),
+             cudaMemcpyHostToDevice);
   cudaMemcpy(lookUpTables_Host[deviceId].diagRightAttacks,
              CPU::lookUpTables.diagRightAttacks, ARRAY_SIZE * sizeof(Bitboard),
              cudaMemcpyHostToDevice);
@@ -336,8 +341,8 @@ int init(int deviceId) {
       72, 63, 54, 45, 36, 27, 18, 9, 0,
   };
   cudaMemcpy(lookUpTables_Host[deviceId].startSqDiagLeft,
-             startingSquareDiagLeftTemplate,
-             81 * sizeof(uint32_t), cudaMemcpyHostToDevice);
+             startingSquareDiagLeftTemplate, 81 * sizeof(uint32_t),
+             cudaMemcpyHostToDevice);
   cudaError_t cudaStatus;
   cudaStatus = cudaGetLastError();
   if (cudaStatus != cudaSuccess) {
@@ -354,7 +359,7 @@ int init(int deviceId) {
     return -1;
   }
 
-  cudaMemcpyToSymbol(GPU::lookUpTables, &lookUpTables_Host[deviceId],
+  cudaMemcpyToSymbol(GPU::lookUpTables, &(lookUpTables_Host[deviceId]),
                      sizeof(LookUpTables), 0, cudaMemcpyHostToDevice);
 
   cudaStatus = cudaGetLastError();
