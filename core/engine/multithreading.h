@@ -3,6 +3,7 @@
 #include <stack>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace shogi {
 namespace engine {
